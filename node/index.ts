@@ -1,7 +1,7 @@
 /*
 import contractManager from './contractManager';
 const cm = new contractManager()
-console.log(cm.getFilesWithoutContract)
+console.log(cm.getFilesWithoutContract())
 */
 
 const readline = require('readline');
