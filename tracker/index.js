@@ -32,6 +32,8 @@ app.post('/subscribe', (req, res) => {
     res.status(400).send({ error: "bad request" })
   }
 
+  console.log(`Node ${nodeId} listens to udp-port ${port}`)
+
   try {
     const data = db.getData("/" + nodeId)
     console.log(new Date() + " - FAIL TO ADD NODE - Node:", nodeId)
@@ -44,7 +46,7 @@ app.post('/subscribe', (req, res) => {
     }
     console.log(new Date() + " - ADD NODE - Node:", nodeId)
     db.push("/" + nodeId, node)
-    res.send(node)
+    res.status(200).send(node)
   }
 })
 
@@ -56,7 +58,7 @@ app.post('/subscribe', (req, res) => {
 
   'nodeId'
 */
-app.get("/ping", (req, res) => {
+app.get("/ping", (req, res) => {              // Should this be POST end-point (because request body)?
   const nodeId = req.body.nodeId
   try {
     const data = db.getData("/" + nodeId)
