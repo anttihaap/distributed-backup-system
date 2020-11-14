@@ -21,17 +21,17 @@ axios
     port: udpIn,
     nodeId: id,
   })
-  .then(res => {
+  .then((res: any) => {
     console.log(`Tracker responded with status code: ${res.status}`);
 
   })
-  .catch(error => {
+  .catch((error: any) => {
     console.error(error)
   })
 
 // Fetch nodes from tracker
 axios.get(`${trackerIp}/nodes`)
-  .then(res => {
+  .then((res: any) => {
     const response = JSON.stringify(res.data);
     console.log(`NODES: ${response}`);
 
@@ -46,13 +46,13 @@ udpClient.bind({
     port: udpIn,
   });
 
-udpClient.on('message', (msg, info) => {
+udpClient.on('message', (msg: any, info: any) => {
     console.log('Received message :' + msg.toString());
     console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);    
 });
 
-const sendUdpMessage = (message) => {
-    udpClient.send(message, 0, message.length, udpOut, 'localhost', (error) => {
+const sendUdpMessage = (message: any) => {
+    udpClient.send(message, 0, message.length, udpOut, 'localhost', (error: any) => {
     
         if(error) {
             console.log('ERROR');
@@ -72,10 +72,10 @@ server.listen(port, host, () => {
     console.log(`Server started on ${host}:${port}`);
 })
 
-server.on('connection', (socket) => {
+server.on('connection', (socket: any) => {
   console.log(`New connection to ${socket.remotePort}`);
 
-  socket.on('data', (data) => {
+  socket.on('data', (data: any) => {
       console.log(`Client msg: ${data}`);
       socket.write('Server received your message: ' + data.toString())
   });
@@ -84,7 +84,7 @@ server.on('connection', (socket) => {
       console.log(`Client on port ${socket.remotePort} closed the connection.`);
   });
 
-  socket.on('error', (error) => {
+  socket.on('error', (error: any) => {
       console.error(`Something went wrong: ${error}`);
   });
 })
@@ -103,7 +103,7 @@ client.connect(clientPort, clientHost, () => {
     client.write('Hello world!');
 })
 
-client.on('data', (data) => {
+client.on('data', (data: any) => {
     console.log(`Server says : ${data} `);
 
 });
@@ -113,7 +113,7 @@ client.on('close', () => {
 
 });
 
-client.on('error', (error) => {
+client.on('error', (error: any) => {
     console.error(`Connection error ${error}`);
 });
 
@@ -125,7 +125,7 @@ const rl = readline.createInterface({
 
 rl.prompt();
 
-rl.on('line', (line) => {
+rl.on('line', (line: any) => {
     switch (line.trim()) {
       case 'quit':
         process.exit(0);
