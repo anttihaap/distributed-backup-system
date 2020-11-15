@@ -1,8 +1,15 @@
+/*
+import contractManager from './contractManager';
+const cm = new contractManager()
+console.log(cm.getFilesWithoutContract())
+*/
+
 const readline = require('readline');
 const dgram = require('dgram');
 const udpClient = dgram.createSocket('udp4');
 const net = require('net');
 const axios = require('axios'); // for http requests
+
 
 const udpIn = process.argv[2];
 const udpOut = process.argv[3];
