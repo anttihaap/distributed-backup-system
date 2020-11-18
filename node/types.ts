@@ -19,5 +19,12 @@ export interface Contract {
   file: File;
 }
 
+export interface PeerNode {
+  id: string;
+  ip: string;
+  port: number;
+  peerList: any[];
+}
+
 
 interface FileManager {}
