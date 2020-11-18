@@ -1,23 +1,22 @@
-/*
 import contractManager from './contractManager';
-const cm = new contractManager()
-console.log(cm.getFilesWithoutContract())
-*/
 
 import readline from 'readline';
-import tracker from './services/tracker';
+import Tracker from './services/tracker';
 import tcpServer from './services/tcpServer';
 import tcpClient from './services/tcpClient';
 import udp from './services/udp';
+const uuid = require('uuid')
 
-const udpIn = Number(process.argv[2]);
-const tcpServerPort = Number(process.argv[3]);
-const tcpClientPort = Number(process.argv[4]);    // For testing, pending better implementation...
-const id = process.argv[5];
+const udpIn = parseInt(process.env.UDP_PORT || "fail")
+const tcpServerPort = parseInt(process.env.TCP_SERVER_PORT || "fail")
+const tcpClientPort = parseInt(process.env.TCP_CLIENT_PORT || "fail")
+const id = process.env.NODE_ID || uuid.v4();
+
 
 // Subscribe to tracker service
-// TODO: /ping
-tracker.subscribe(udpIn, id)
+const tracker = new Tracker(id, udpIn)
+
+const cm = new contractManager(tracker)
 
 // Set up UDP client process (listens to port udpIn)
 const udpClient = new udp(udpIn, tracker)

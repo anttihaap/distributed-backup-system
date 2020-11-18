@@ -5,15 +5,19 @@ import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import path from "path";
 import fs from "fs";
 import util from "util";
+import Tracker from "./services/tracker";
 
 class ContractManager {
   contractDb: any;
   fileDb: any;
+  tracker: Tracker;
 
-  constructor() {
+  constructor(tracker: Tracker) {
     this.contractDb = new JsonDB(new Config("contractDb", true, true, "/"));
     this.fileDb = new JsonDB(new Config("fileDb", true, true, "/"));
+    this.tracker = tracker;
 
+    this.syncFiles();
     cron.schedule("*/5 * * * * *", async () => {
       this.syncFiles();
     });
@@ -31,6 +35,8 @@ class ContractManager {
         files.push(file)
       }
     }
+    
+    console.log('FILES', files)
     return files
   }
 
@@ -78,6 +84,8 @@ class ContractManager {
         this.fileDb.push("/" + fileName, newFileDbItem)
       }
     });
+    console.log('files without contract', this.getFilesWithoutContract())
+    this.tracker.setContractRequest(this.getFilesWithoutContract().length > 0)
   };
 }
 

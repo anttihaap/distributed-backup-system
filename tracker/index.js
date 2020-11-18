@@ -29,15 +29,20 @@ app.post('/subscribe', (req, res) => {
   const port = req.body.port
   const nodeId = req.body.nodeId
   if (!port || !nodeId) {
-    res.status(400).send({ error: "bad request" })
+    res.status(400)
+    console.log('bad request')
+    console.log(req.body)
+    res.send({ error: "bad request" })
+    return
   }
 
   console.log(`Node ${nodeId} listens to udp-port ${port}`)
 
   try {
+    // TODO: you can steal a node id so...
     const data = db.getData("/" + nodeId)
     console.log(new Date() + " - FAIL TO ADD NODE - Node:", nodeId)
-    res.status(400).send({ error: "node with id already subscribed" })
+    res.send({ error: "node with id already subscribed" })
   } catch (error) {
     const node = {
       ip: req.clientIp,
@@ -58,16 +63,26 @@ app.post('/subscribe', (req, res) => {
 
   'nodeId'
 */
-app.get("/ping", (req, res) => {              // Should this be POST end-point (because request body)?
+app.post("/ping", (req, res) => {              // Should this be POST end-point (because request body)?
   const nodeId = req.body.nodeId
+  const contractRequest = req.body.contractRequest
   try {
     const data = db.getData("/" + nodeId)
-    db.push("/" + nodeId + "/lastUpdate", new Date().getTime())
-    console.log(new Date() + " - PING - Node: " +  nodeId)
+    const node = {
+      lastUpdate: new Date().getTime(),
+      contractRequest: !!contractRequest
+
+    }
+    db.push("/" + nodeId, {
+      ...data,
+      lastUpdate: new Date().getTime(),
+      contractRequest: !!contractRequest
+    })
+    console.log(new Date() + " - PING - Node: " + nodeId)
     res.send({})
   } catch (error) {
     console.log(new Date() + " - PING FAIL - Node: " + nodeId)
-    res.status(400).send({ error: "node is not subscribed"})
+    res.status(400).send({ error: "node is not subscribed" })
   }
 })
 
