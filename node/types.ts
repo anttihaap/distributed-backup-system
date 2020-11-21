@@ -23,7 +23,8 @@ export interface PeerNode {
   id: string;
   ip: string;
   port: number;
-  peerList: any[];
+  lastPing: number;
+  //peerList: any[];
 }
 
 

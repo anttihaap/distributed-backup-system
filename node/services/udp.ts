@@ -1,12 +1,14 @@
 import dgram from 'dgram';
+import { EventEmitter } from 'events';
 
-class Udp {
+class Udp extends EventEmitter {
   udpClient: any;
-  tracker: any;
+  //tracker: any;
   port: number;
 
-  constructor(udpIn: number, tracker: any) {
-    this.tracker = tracker;
+  constructor(udpIn: number) {
+    super();
+    //this.tracker = tracker;
     this.port = udpIn;
 
     this.udpClient = dgram.createSocket('udp4')
@@ -16,8 +18,37 @@ class Udp {
     });
       
     this.udpClient.on('message', (msg: any, info: any) => {
-      console.log('Received message :' + msg.toString());
-      console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);    
+
+      const message = msg.toString().split(':')
+      const command = message[0]
+      const connectingNodePort = info.port  // keep track when message is forwarded, message stays the same,
+      const connectingNodeIp = info.address // this is always the sender, joining node passed on in msg string
+
+      switch (command) {
+        case 'JOIN':
+          this.emit('join', { port: connectingNodePort, ip: connectingNodeIp, message: msg.toString()})
+          break;
+        case 'ACK_JOIN':
+          this.emit('ack_join', { message: msg.toString()}) // the joining node will receive this and then NOTIFY the new predecessor
+          break;
+        case 'NOTIFY':    // notify the new predecessor NOTIFY:ID:HOST:PORT
+          this.emit('notify', { message: msg.toString() })
+          break;
+        case 'FIRST_ACK':
+          this.emit('first_ack', {message: msg.toString()})
+          break;
+        case 'PING':
+          this.emit('ping', {message: msg.toString()})
+          break;
+        case 'NEW_NODE':
+          this.emit('new_node', {message: msg.toString()})
+          break;
+        default:
+          break;
+      }
+     // console.log('Received message:' + msg.toString());
+     // console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
+      
     });
   }
 
@@ -27,9 +58,14 @@ class Udp {
         console.log('ERROR');
         this.udpClient.close();
       } else {
-        console.log('Sent message: ' + message.toString() + ' to ' + host + ':' + udpHostPort);
+        //console.log('Sent message: ' + message.toString() + ' to ' + host + ':' + udpHostPort);
       }
     });
+  }
+
+  /*
+  sendUdpMessageToList = (message: any, peerList: any) => {
+    console.log('MESSAGE SENT', message);
   }
   
   sendUdpMessageToAll = async (message: any) => {
@@ -41,6 +77,7 @@ class Udp {
       }
     }
   }
+  */
 }
 
 export default Udp
