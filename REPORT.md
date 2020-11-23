@@ -16,13 +16,29 @@ JavaScript with TypeScript on Node.js runtime environment
 
 ### Architecture
 
+The peer nodes form a ring as in the Chord protocol.
+
 ### Process
 
 ### Communication
 
-The messaging between the nodes (e.g. proposing a contract for multiple nodes in the network) is conducted with UDP. The file transfer is done over TCP for reliability.
+The messaging between the nodes (e.g. proposing a contract for multiple nodes in the network) is conducted with UDP. The file transfer is done over TCP for reliability. Messages are passed clockwise in the ring when a new node joins. If the address of the receiving node is known, messages are sent directly between the two nodes.
 
-Message protocol: ... ... ...
+#### Joining the network:    
+    JOIN:nodeId:host:port                               The joining node sends JOIN to a node that it knows in the network
+    ACK_JOIN:nodeId:host:port:predId:predHost:predPort  A node that accepts JOIN sends ACK_JOIN to the joining node
+    NOTIFY:nodeId:host:port                             The joining node sends NOTIFY to its new predecessor
+
+When a node wants to join the network it sends a JOIN message to a node that it knows in the network. The JOIN message is passed clockwise in the network from smaller nodeId value to greater until the right place is found. The node that will be the successor to the new node sends an ACK_JOIN to the joining node with information about its current predecessor. It also updates the new node to its predecessor.    
+
+After receiving the ACK_JOIN, the joining node will set its successor and predecessor based on the information received from the acking node. It will then send NOTIFY to the predecessor. The predecessor will in turn update its successor to be the new node.
+
+( Insert a diagram here... )
+
+Special cases:
+* A node that starts the network gets the highest possible id value.
+* When the first node joins, both nodes are set as a predecessor and a successor to each other. In that case, NOTIFY message is not sent.
+
 
 ## The key enablers and lessons learned
 
