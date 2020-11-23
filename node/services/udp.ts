@@ -1,46 +1,56 @@
-import dgram from 'dgram';
+import dgram from "dgram";
+import Tracker from "./tracker";
 
 class Udp {
   udpClient: any;
-  tracker: any;
+  tracker: Tracker;
   port: number;
 
-  constructor(udpIn: number, tracker: any) {
+  constructor(udpIn: number, tracker: any, onMessage: any) {
     this.tracker = tracker;
     this.port = udpIn;
 
-    this.udpClient = dgram.createSocket('udp4')
+    this.udpClient = dgram.createSocket("udp4");
     this.udpClient.bind({
-      address: 'localhost',
+      address: "localhost",
       port: udpIn,
     });
-      
-    this.udpClient.on('message', (msg: any, info: any) => {
-      console.log('Received message :' + msg.toString());
-      console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);    
-    });
+
+    this.udpClient.on("message", onMessage)
   }
 
-  sendUdpMessage = (message: any, udpHostPort: number, host: string) => {
+  sendUdpMessage = (message: string, udpHostPort: number, host: string) => {
     this.udpClient.send(message, 0, message.length, udpHostPort, host, (error: any) => {
-      if(error) {
-        console.log('ERROR');
+      if (error) {
+        console.log("ERROR");
         this.udpClient.close();
       } else {
-        console.log('Sent message: ' + message.toString() + ' to ' + host + ':' + udpHostPort);
+        console.log("Sent message: " + message.toString() + " to " + host + ":" + udpHostPort);
       }
     });
-  }
-  
-  sendUdpMessageToAll = async (message: any) => {
+  };
+
+  sendContractCreateToAll = async (nodeId: string) => {
+    //TODO: send message only to nodes that want to create contracts
     const list = await this.tracker.getNodes()
-    for (let node in list) {
-      console.log(node)
-      if (list[node].port != this.port) {
-        this.sendUdpMessage(message, list[node].port, list[node].ip)
+
+    for (const node in list) {
+      if (node != nodeId) {
+        const { ip, port } = list[node]
+        this.sendUdpMessage(`CONTRACT_CREATE;${node};${nodeId}`, port, ip)
       }
     }
   }
+
+  sendUdpMessageToAllContractRequest = async (message: string) => {
+    const listOfcontractRequest = await this.tracker.getNodes();
+    //console.log(Object.values(listOfcontractRequest).filter(r => r. === 1));
+    for (let node in listOfcontractRequest) {
+      if (listOfcontractRequest[node].port != this.port) {
+        this.sendUdpMessage(message, listOfcontractRequest[node].port, listOfcontractRequest[node].ip);
+      }
+    }
+  };
 }
 
-export default Udp
+export default Udp;

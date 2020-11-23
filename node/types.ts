@@ -1,6 +1,6 @@
 export interface FileDbItem {
   file: File;
-  contract: Contract | null;
+  contract: string | null;
 }
 
 export interface File {
@@ -13,9 +13,20 @@ export interface ContractDb {
   [test: string]: Contract;
 }
 
+export interface ContractCandidate {
+  creationTime: number;
+  pingCount: number;
+  contractId: string;
+  contractNodeId: string;
+  contractNodePort: number;
+  contractNodeAddress: string;
+}
+
 export interface Contract {
   contractId: string;
   contractNodeId: string;
+  contractNodePort: number;
+  contractNodeAddress: string;
   file: File;
 }
 
