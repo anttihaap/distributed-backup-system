@@ -90,7 +90,7 @@ class Peer {
     // listen to and react to emitted messages (from udpClient)
 
     this.udpClient.on('join', (data: any) => {
-      this.handleJoin(data.port)
+      this.handleJoin(data.message)
     })
 
     this.udpClient.on('first_ack', (data: any) => {

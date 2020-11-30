@@ -42,7 +42,7 @@ const createPeerNode = (port: number, connectToHost: string, connectToPort: numb
   peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost)
 }
 
-if (process.argv.length == 3) {                                                                               /// TEST === 4
+if (process.argv.length === 3) {                                                                               /// TEST === 4
   console.log('Creating first node: localhost', udpIn);
   createFirstPeerNode(udpIn);
 } else {
