@@ -41,7 +41,7 @@ const getClientConf = (): ClientConf => {
   } catch (err) {
     console.log('Save local client configuraiton to db.')
     const udpIn = Number(getRequiredEnvVar("UDP_PORT"));
-    const id = crypto.createHash("sha1").update(`${host}:${udpIn}`).digest("hex");
+    const id = crypto.createHash("sha1").update(`${host}:${udpIn}`).digest("hex").slice(0, 6);
     const newClientConf = {
       id: id,
       host: host,
@@ -75,7 +75,6 @@ const getPeerNodeHandler = () => {
   };
 
   const createPeerNode = (port: number, connectToHost: string, connectToPort: number) => {
-    //const idTest = process.argv[5]
     const peer = new Peer(clientConf.id, "localhost", port, udpClient);
     const name = peer.getId();
     const joinMessage = `JOIN:${name}:${host}:${clientConf.udpIn}`;
@@ -84,7 +83,6 @@ const getPeerNodeHandler = () => {
   };
 
   if (connectPeerHost && connectPeerPort) {
-    /// TEST === 4
     console.log("Joining to node", connectPeerHost, connectPeerPort);
     return createPeerNode(clientConf.udpIn, connectPeerHost, connectPeerPort);
   } else {

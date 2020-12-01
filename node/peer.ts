@@ -2,11 +2,6 @@ import cron from 'node-cron';
 import udp from './services/udp';
 import { PeerNode, NodesHandler, Node } from './types';
 
-/**
- * IF testing with manually entered id values (e.g. integers), remember to remove hex string (16) values
- * from parseInt() and toString() functions
- */
-
 class Peer implements NodesHandler {
   id: string;
   ip: string;
@@ -160,7 +155,7 @@ class Peer implements NodesHandler {
         this.addNodeToNodeList(peerId, peerHost, parseInt(peerPort))
       }
       // If joining with the highest id value
-      else if (parseInt(peerId, 16) > parseInt(this.id), 16 && parseInt(peerId, 16) > parseInt(successorId, 16)
+      else if (parseInt(peerId, 16) > parseInt(this.id, 16) && parseInt(peerId, 16) > parseInt(successorId, 16)
         && parseInt(this.id, 16) > parseInt(successorId, 16)) {
         const ackStringLast = `ACK_JOIN:${successorId}:${successorIp}:${successorPort}:${this.id}:${this.ip}:${this.port}`
         this.addSuccessor(newPeer)
