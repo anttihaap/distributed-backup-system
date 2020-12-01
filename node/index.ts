@@ -1,84 +1,143 @@
-/*
-import contractManager from './contractManager';
-const cm = new contractManager()
-console.log(cm.getFilesWithoutContract())
+import crypto from "crypto";
+import { JsonDB } from "node-json-db";
+import { Config } from "node-json-db/dist/lib/JsonDBConfig";
+import { getRequiredEnvVar, getOptionalEnvVar } from "./util";
 
+import { NodesHandler } from "./types";
 
-import readline from 'readline';
-import tracker from './services/tracker';
-import tcpServer from './services/tcpServer';
-import tcpClient from './services/tcpClient';
-import udp from './services/udp';
-*/
+import Tracker from "./services/tracker";
+import UdpClient from "./services/udp";
+import FileManager from "./fileManager";
+import ContractNegotiator from "./contractNegotiator";
+import ContractManager from "./contractManager";
+import Peer from "./peer";
 
-import crypto from 'crypto'
-import Peer from './peer'
+const localNodeId = Number(getRequiredEnvVar("LOCAL_NODE_ID"));
 
-const udpIn = Number(process.argv[2]);
-const host = 'localhost'
-/*
-const tcpServerPort = Number(process.argv[3]);
-const tcpClientPort = Number(process.argv[4]);    // For testing, pending better implementation...
-const id = process.argv[5];
-*/
+// TODO!
+//const tcpServerPort = Number(getRequiredEnvVar("TCP_SERVER_PORT"));
+//const tcpClientPort = Number(getRequiredEnvVar("TCP_CLIENT_PORT"));
 
-// args: [2]: own port, [3]: remote host, [4]: remote port (TESTING: [5] id)
+const connectPeerHost = getOptionalEnvVar("CONNECT_PEER_HOST");
+const connectPeerPort = Number(getOptionalEnvVar("CONNECT_PEER_PORT"));
+// TODO: lets use this for now?
+const useTracker = false;
 
-// Create peer node
-const createFirstPeerNode = (port: number) => {
-  const hash = crypto.createHash('sha1').update(`localhost:${udpIn}`).digest('hex')     
-  //const idTest = process.argv[3]
-  const peer = new Peer(hash, 'localhost', port);
-  const name = peer.getId();
-  console.log('First node:', name)
+const host = "localhost";
+
+interface ClientConf {
+  id: string;
+  udpIn: number;
+  host: string;
 }
 
-const createPeerNode = (port: number, connectToHost: string, connectToPort: number) => {
-  const hash = crypto.createHash('sha1').update(`localhost:${port}`).digest('hex')
-  //const idTest = process.argv[5]
-  const peer = new Peer(hash, 'localhost', port);
-  const name = peer.getId();
-  const joinMessage = `JOIN:${name}:${host}:${udpIn}`
-  peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost)
-}
+const clientConfigDb = new JsonDB(new Config("./db/clientConfigDb_" + localNodeId, true, true, "/"));
 
-if (process.argv.length === 3) {                                                                               /// TEST === 4
-  console.log('Creating first node: localhost', udpIn);
-  createFirstPeerNode(udpIn);
-} else {
-  console.log('Joining to node', process.argv[3], Number(process.argv[4]))
-  createPeerNode(udpIn, process.argv[3], Number(process.argv[4]));
-}
+const getClientConf = (): ClientConf => {
+  try {
+    const clientConf = clientConfigDb.getData("/" + localNodeId);
+    console.log('Fetching local client configuration from db.')
+    return clientConf;
+  } catch (err) {
+    console.log('Save local client configuraiton to db.')
+    const udpIn = Number(getRequiredEnvVar("UDP_PORT"));
+    const id = crypto.createHash("sha1").update(`${host}:${udpIn}`).digest("hex");
+    const newClientConf = {
+      id: id,
+      host: host,
+      udpIn: udpIn,
+    };
+    clientConfigDb.push("/" + localNodeId, newClientConf);
+    return newClientConf;
+  }
+};
+
+const clientConf = getClientConf();
+
+const udpClient = new UdpClient(clientConf.udpIn);
+
+const getNodeHandler = (): NodesHandler => {
+  if (useTracker) {
+    // TODO THIS PART!
+    return new Tracker(clientConf.id, clientConf.udpIn, 123);
+  } else {
+    return getPeerNodeHandler();
+  }
+};
+
+const getPeerNodeHandler = () => {
+  // Create peer node
+  const createFirstPeerNode = (port: number) => {
+    const peer = new Peer(clientConf.id, "localhost", port, udpClient);
+    const name = peer.getId();
+    console.log("First node:", name);
+    return peer;
+  };
+
+  const createPeerNode = (port: number, connectToHost: string, connectToPort: number) => {
+    //const idTest = process.argv[5]
+    const peer = new Peer(clientConf.id, "localhost", port, udpClient);
+    const name = peer.getId();
+    const joinMessage = `JOIN:${name}:${host}:${clientConf.udpIn}`;
+    peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost);
+    return peer;
+  };
+
+  if (connectPeerHost && connectPeerPort) {
+    /// TEST === 4
+    console.log("Joining to node", connectPeerHost, connectPeerPort);
+    return createPeerNode(clientConf.udpIn, connectPeerHost, connectPeerPort);
+  } else {
+    console.log("Creating first node: localhost", clientConf.udpIn);
+    return createFirstPeerNode(clientConf.udpIn);
+  }
+};
+
+// TODO!
+const nodeManager = getNodeHandler();
+
+// Comment these if only testing peer network:
+const fm = new FileManager(nodeManager, localNodeId);
+const cn = new ContractNegotiator(nodeManager, udpClient, clientConf.id, fm);
+const cm = new ContractManager(nodeManager, udpClient, clientConf.id, fm);
 
 /*
 // Subscribe to tracker service
-// TODO: /ping
-tracker.subscribe(udpIn, id)
+const tracker = new Tracker(id, udpIn, tcpIn)
+
+
+const updClient = new udp(udpIn)
+
+const tcpServer = new TcpServer(tcpIn, '127.0.0.1');
+
 
 // Set up UDP client process (listens to port udpIn)
-const udpClient = new udp(udpIn, tracker)
+//const udpClient = new udp(udpIn, tracker)
 
 // TCP Client and Server are not needed until backup nodes are selected and direct communication begins?
 // Set up TCP Server
-const port = tcpServerPort;
-const host = '127.0.0.1';
-tcpServer.startServer(port, host);
-
+/*
+*/
 
 // Set up TCP Client
+/*
 const clientPort: number = tcpClientPort;
 const clientHost = '127.0.0.1';
 tcpClient.startClient(clientPort, clientHost);
 
+*/
 
 // Test tcpClient
+/*
 const setUpTcpClientAndSendHello = () => {
   const clientPort: number = tcpClientPort;
   const clientHost = '127.0.0.1';
   tcpClient.startClient(clientPort, clientHost);
 }
+*/
 
 // Testing udp messages: read input from cmd line and send an UDP message
+/*
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -92,11 +151,11 @@ rl.on('line', (line: any) => {
         process.exit(0);
         //break;
       case 'tcp':
-        setUpTcpClientAndSendHello();
+        //setUpTcpClientAndSendHello();
         break;
       default:
         const message = Buffer.from(line);
-        udpClient.sendUdpMessageToAll(message);
+        //udpClient.sendUdpMessageToAllContractRequest(message);
         break;
     }
     rl.prompt();

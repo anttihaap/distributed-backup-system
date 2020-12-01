@@ -1,13 +1,13 @@
 import cron from 'node-cron';
 import udp from './services/udp';
-import { PeerNode } from './types';
+import { PeerNode, NodesHandler, Node } from './types';
 
 /**
  * IF testing with manually entered id values (e.g. integers), remember to remove hex string (16) values
  * from parseInt() and toString() functions
  */
 
-class Peer {
+class Peer implements NodesHandler {
   id: string;
   ip: string;
   port: number;
@@ -16,12 +16,12 @@ class Peer {
   udpClient: any;
   nodeList: PeerNode[] = [];
   
-  constructor(id: string, ip: string, port: number) {
+  constructor(id: string, ip: string, port: number, udpClient: udp) {
     this.id = id;
     this.ip = ip;
     this.port = port;
 
-    this.udpClient = new udp(this.port);
+    this.udpClient = udpClient;
     // udp address is automatically set to 'localhost' for all nodes in udp.ts
 
     // ping the whole nodeList with 10 sec intervals to keep node alive
@@ -280,6 +280,25 @@ class Peer {
 
   getId() {
     return this.id
+  }
+
+  // TODO
+  getNodes(): Node[] {
+    return []
+  }
+
+  getNode(): Node | undefined {
+    return undefined;
+  }
+
+  // TODO
+  setRequestingContracts(bool: boolean) {
+    return;
+  }
+
+  // TODO
+  getRequestingContracts() {
+    return false;
   }
 
   addPredecessor(peer: string) {
