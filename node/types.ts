@@ -4,6 +4,7 @@ export interface Node {
   port: string;
   tcpPort: string;
   contractRequest: boolean;
+  lastUpdate?: number;
 }
 
 export interface FileDbItem {
@@ -39,14 +40,6 @@ export interface Contract {
   file: File;
   fileSent: boolean;
   fileSendingInProgress: boolean;
-}
-
-export interface PeerNode {
-  id: string;
-  ip: string;
-  port: number;
-  lastPing: number;
-  //peerList: any[];
 }
 
 export interface NodesHandler {
