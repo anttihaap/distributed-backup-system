@@ -10,12 +10,10 @@ const startClient = (port: number, host: string) => {
 
   client.on('data', (data: any) => {
     console.log(`Server says : ${data} `);
-
   });
 
   client.on('close', () => {
     console.log('Connection closed');
-
   });
 
   client.on('error', (error: any) => {

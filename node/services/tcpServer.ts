@@ -1,31 +1,54 @@
-import net from 'net';
+import net from "net";
+import fs, { WriteStream } from "fs";
+import path from "path";
 
-const startServer = (tcpServerPort: number, host: string) => {
+class TcpServer {
+  server: net.Server;
 
-  const server = net.createServer();
-  
-  server.listen(tcpServerPort, host, () => {
-    console.log(`Server started on ${host}:${tcpServerPort}`);
+  constructor(tcpPort: number, host: string) {
+    this.server = net.createServer();
+    this.server.listen(tcpPort, host, () => {
+      console.log("TCP server started");
+    });
 
-    server.on('connection', (socket: any) => {
-      console.log(`New connection to ${socket.remotePort}`);
-      const client = socket   // for testing
-    
-      socket.on('data', (data: any) => {
-        console.log(`Client msg: ${data}`);
-        socket.write('Server received your message: ' + data.toString())
-        client.destroy()      // for testing
+    this.server.on("connection", (socket: net.Socket) => {
+      console.log("connection");
+      let fileWriteStream: null | WriteStream = null;
+      //let receivedFileData: Buffer[] = [];
+      let receivedMetadata: Buffer[] = [];
+      let receivedType: boolean = false;
+      socket.on("data", (data) => {
+        if (receivedType) {
+          fileWriteStream?.write(data)
+          return
+        }
+
+
+        const indexOfDelimiter = data.toString("utf-8").indexOf(";");
+        if (indexOfDelimiter !== -1) {
+          const metaData = data.slice(0, indexOfDelimiter + 2);
+          const fileData = data.slice(indexOfDelimiter + 1, data.length);
+          receivedMetadata.push(metaData);
+          fileWriteStream = fs.createWriteStream(path.resolve("./files_contract/" + parseInt(process.env.LOCAL_NODE_ID || "fail") + "_" + Buffer.concat(receivedMetadata).toString()))
+          fileWriteStream.write(fileData)
+          receivedType = true;
+
+          const concatMeta = Buffer.concat(receivedMetadata);
+          console.log("METADATA", concatMeta);
+        } else {
+          receivedMetadata.push(data)
+        }
       });
-    
-      socket.on('close', () => {
-        console.log(`Client on port ${socket.remotePort} closed the connection.`);
+
+      socket.on("end", () => {
+        const test2 = Buffer.concat(receivedMetadata);
+        console.log("metadata", test2.toString());
       });
-    
-      socket.on('error', (error: any) => {
-        console.error(`Something went wrong: ${error}`);
+
+      socket.on("error", (error) => {
+        console.log("ERROR", error);
       });
-    })
-  })  
+    });
+  }
 }
-
-export default { startServer }
+export default TcpServer;
