@@ -13,6 +13,7 @@ import FileManager from "./fileManager";
 import ContractNegotiator from "./modules/contract/contractNegotiator";
 import ContractManager from "./contractManager";
 import Peer from "./peer";
+import logger from './util/logger';
 
 const localNodeId = Number(getRequiredEnvVar("LOCAL_NODE_ID"));
 
@@ -40,6 +41,8 @@ const nodeId = getClientHash();
 
 const udpClient = new UdpClient(localClientConfig.port);
 
+const logWriter = logger(nodeId)
+
 const getNodeHandler = (): NodesHandler => {
   if (generalClientConfig.useTracker) {
     return new Tracker(nodeId, localClientConfig.port, localClientConfig.port - 1);
@@ -49,16 +52,17 @@ const getNodeHandler = (): NodesHandler => {
 };
 
 const getPeerNodeHandler = () => {
+  //
   // Create peer node
   const createFirstPeerNode = (port: number) => {
-    const peer = new Peer(nodeId, "localhost", port, udpClient);
+    const peer = new Peer(nodeId, "localhost", port, udpClient, logWriter);
     const name = peer.getId();
     console.log("First node:", name);
     return peer;
   };
 
   const createPeerNode = (port: number, connectToHost: string, connectToPort: number) => {
-    const peer = new Peer(nodeId, "localhost", port, udpClient);
+    const peer = new Peer(nodeId, "localhost", port, udpClient, logWriter);
     const name = peer.getId();
     const joinMessage = `JOIN:${name}:${host}:${localClientConfig.port}`;
     peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost);

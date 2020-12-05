@@ -108,6 +108,7 @@ class FileManager {
 
   syncFiles = async () => {
     console.log("SYNC FILES");
+
     const files = await this.readFiles();
     files.forEach((fileName: any) => {
       try {
