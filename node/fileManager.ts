@@ -11,11 +11,13 @@ class FileManager {
   fileDb: any;
   contractDb: any;
   nodeHandler: NodesHandler;
+  localNodeId: number;
 
   constructor(nodeHandler: NodesHandler, localNodeId: number) {
     this.fileDb = new JsonDB(new Config("./db/fileDb_" + localNodeId, true, true, "/"));
     this.contractDb = new JsonDB(new Config("./db/contractDb_" + localNodeId, true, true, "/"));
     this.nodeHandler = nodeHandler;
+    this.localNodeId = localNodeId;
 
     this.syncFiles();
     cron.schedule("*/5 * * * * *", async () => {
@@ -46,11 +48,22 @@ class FileManager {
       fileSent: false,
       contractId: contractCandidate.contractId,
       contractNodeId: contractCandidate.contractNodeId,
-      contractNodeAddress: contractCandidate.contractNodeAddress,
-      contractNodePort: contractCandidate.contractNodePort,
     } as Contract;
     this.contractDb.push("/" + contract.contractId, contract);
     this.fileDb.push("/" + file.name + "/contract", contract.contractId);
+  }
+
+  setContractFileSent(contractId: string) {
+    try {
+      const contract = this.contractDb.getData("/" + contractId) as Contract;
+      this.contractDb.push("/" + contractId, {
+        ...contract,
+       fileSent: true, 
+       fileSendingInProgress: false,
+      } as Contract)
+    } catch(_) {
+      throw "Trying to set file sent for contract that doesn't exist. Id: " + contractId; 
+    }
   }
 
   getFilesWithoutContract(): File[] {
@@ -72,12 +85,25 @@ class FileManager {
     return path.resolve("./files/" + fileName);
   }
 
+  getReceivedContractFilePath = (contractId: string) => {
+    return path.resolve(`./files_contract/${this.localNodeId}_${contractId}`)
+  }
+
   /**
    * Convert database to a list.
    */
   getContracts(): Contract[] {
     const contractDbData = this.contractDb.getData("/") as ContractDb;
     return Object.entries(contractDbData).reduce<Contract[]>((acc, [_, contract]) => [...acc, contract], []);
+  }
+
+  getContract(contractId: string): Contract | undefined {
+    try {
+      const contract = this.contractDb.getData("/" + contractId)
+      return contract;
+    } catch(_) {
+      return undefined
+    }
   }
 
   syncFiles = async () => {

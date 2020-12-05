@@ -1,13 +1,11 @@
-import { File, Node, FileDbItem, ContractDb, ContractCandidate, NodesHandler } from "./types";
+import { NodesHandler } from "./types";
 import cron from "node-cron";
-import { JsonDB } from "node-json-db";
-import { Config } from "node-json-db/dist/lib/JsonDBConfig";
-import path from "path";
-import Tracker from "./services/tracker";
 import udp from "./services/udp";
 import FileManager from "./fileManager";
-import net from 'net';
-import fs from "fs";
+
+import ContractProof from "./modules/contract/contractProof";
+import ContractFileSender from "./modules/contract/contractFileSender";
+import { sha1smallstr } from "./util/hash";
 
 class ContractManager {
   contractDb: any;
@@ -16,37 +14,38 @@ class ContractManager {
   udp: udp;
   id: string;
 
-  contractCandidates: Array<ContractCandidate>;
-
-  constructor(nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager) {
+  constructor(localNodeId: number, nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager) {
     this.nodeHandler = nodeManager;
     this.udp = udp;
     this.fm = fm;
     this.id = id;
 
-    this.contractCandidates = [];
     cron.schedule("*/10 * * * * *", async () => {
       this.pingContracts();
     });
 
-    cron.schedule("*/30 * * * * *", async () => {
-      this.checkContractsWithoutFileSent();
-    });
+    const contractProof = new ContractProof(localNodeId, this.nodeHandler, this.udp, this.id, this.fm);
+    const contractFileSender = new ContractFileSender(this.nodeHandler, this.udp, this.id, this.fm);
   }
 
-  private checkContractsWithoutFileSent = async () => {
-    // TODO: logic here to start sending files for contracts
-  };
-
   private pingContracts = async () => {
-    console.log("PING CONTRACTS");
-    this.fm.getContracts().forEach((contract) => {
+    const nodes = this.nodeHandler.getNodes();
+    const pings = this.fm.getContracts().map((contract) => {
+      const node = nodes.find(n => n.nodeId === contract.contractNodeId)
+      if (!node) {
+        console.log(`CONTRACT PING ERROR: cant find node ${contract.contractNodeId} for contract${contract.contractId}`)
+        return;
+      }
       this.udp.sendUdpMessage(
         `CONTRACT_PING;${contract.contractId};${contract.contractNodeId}`,
-        contract.contractNodePort,
-        contract.contractNodeAddress
+        Number(node.port),
+        node.ip
       );
+      return sha1smallstr(contract.contractId);
     });
+    if (pings.length > 0) {
+      console.log(`PING CONTRACTS [${pings.join(", ")}]`);
+    }
   };
 }
 

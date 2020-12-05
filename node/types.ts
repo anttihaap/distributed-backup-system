@@ -35,8 +35,6 @@ export interface ContractCandidate {
 export interface Contract {
   contractId: string;
   contractNodeId: string;
-  contractNodePort: number;
-  contractNodeAddress: string;
   file: File;
   fileSent: boolean;
   fileSendingInProgress: boolean;

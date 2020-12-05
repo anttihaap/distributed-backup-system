@@ -17,6 +17,8 @@ class Tracker implements NodesHandler {
     this.contractRequest = false;
     this.nodes = [];
 
+    console.log("TMP NODE ID", this.id)
+
     axios
       .post(`${trackerIp}/subscribe`, {
         port: updIn,
@@ -61,7 +63,7 @@ class Tracker implements NodesHandler {
   };
 
   getNode = (nodeId: string): Node | undefined => {
-    return this.nodes.find(node => node.nodeId = nodeId)
+    return this.nodes.find(node => node.nodeId === nodeId)
   }
 }
 

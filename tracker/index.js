@@ -27,7 +27,6 @@ app.use(requestIp.mw())
  */
 app.post('/subscribe', (req, res) => {
   const port = req.body.port
-  const tcpPort = req.body.tcpPort
   const nodeId = req.body.nodeId
   if (!port || !nodeId) {
     res.status(400)
@@ -39,27 +38,15 @@ app.post('/subscribe', (req, res) => {
 
   console.log(`Node ${nodeId} listens to udp-port ${port}`)
 
-  /*
-  try {
-    // TODO: you can steal a node id so...
-    const data = db.getData("/" + nodeId)
-    console.log(new Date() + " - FAIL TO ADD NODE - Node:", nodeId)
-    res.send({ error: "node with id already subscribed" })
-  } catch (error) {
-    */
-    const node = {
-      nodeId: nodeId,
-      ip: req.clientIp,
-      port,
-      tcpPort: tcpPort,
-      lastUpdate: new Date().getTime()
-    }
-    console.log(new Date() + " - ADD NODE - Node:", nodeId)
-    db.push("/" + nodeId, node)
-    res.status(200).send(node)
-    /*
+  const node = {
+    nodeId: nodeId,
+    ip: req.clientIp,
+    port,
+    lastUpdate: new Date().getTime()
   }
-  */
+  console.log(new Date() + " - ADD NODE - Node:", nodeId)
+  db.push("/" + nodeId, node)
+  res.status(200).send(node)
 })
 
 /*
@@ -96,7 +83,7 @@ app.post("/ping", (req, res) => {              // Should this be POST end-point 
 app.get("/nodes", (req, res) => {
   const data = db.getData("/")
   let arr = [];
-  for(const [_, value] of Object.entries(data)) {
+  for (const [_, value] of Object.entries(data)) {
     arr.push(value)
   }
   res.send(arr)

@@ -1,5 +1,5 @@
-import dgram from 'dgram';
-import { EventEmitter } from 'events';
+import dgram from "dgram";
+import { EventEmitter } from "events";
 
 class Udp extends EventEmitter {
   udpClient: any;
@@ -14,47 +14,54 @@ class Udp extends EventEmitter {
       address: "localhost",
       port: udpIn,
     });
-      
-    this.udpClient.on('message', (msg: any, info: any) => {
 
-      const message = msg.toString().split(':')
-      const [command, data1, data2, data3] = message;
-      const connectingNodePort = info.port;  // keep track when message is forwarded, message stays the same,
+    this.udpClient.on("message", (msg: any, info: any) => {
+      const message = msg.toString().split(":");
+      const [command, data1, data2, data3, data4] = message;
+      const connectingNodePort = info.port; // keep track when message is forwarded, message stays the same,
       const connectingNodeIp = info.address; // this is always the sender, joining node passed on in msg string
 
       switch (command) {
-        case 'JOIN':
-          this.emit('join', { port: connectingNodePort, ip: connectingNodeIp, message: msg.toString()})
+        case "JOIN":
+          this.emit("join", { port: connectingNodePort, ip: connectingNodeIp, message: msg.toString() });
           break;
-        case 'ACK_JOIN':
-          this.emit('ack_join', { message: msg.toString()}) // the joining node will receive this and then NOTIFY the new predecessor
+        case "ACK_JOIN":
+          this.emit("ack_join", { message: msg.toString() }); // the joining node will receive this and then NOTIFY the new predecessor
           break;
-        case 'NOTIFY':    // notify the new predecessor NOTIFY:ID:HOST:PORT
-          this.emit('notify', { message: msg.toString() })
+        case "NOTIFY": // notify the new predecessor NOTIFY:ID:HOST:PORT
+          this.emit("notify", { message: msg.toString() });
           break;
-        case 'FIRST_ACK':
-          this.emit('first_ack', {message: msg.toString()})
+        case "FIRST_ACK":
+          this.emit("first_ack", { message: msg.toString() });
           break;
-        case 'PING':
-          this.emit('ping', {message: msg.toString()})
+        case "PING":
+          this.emit("ping", { message: msg.toString() });
           break;
-        case 'NEW_NODE':
-          this.emit('new_node', {message: msg.toString()})
+        case "NEW_NODE":
+          this.emit("new_node", { message: msg.toString() });
           break;
-      case "CONTRACT_CREATE":
-        this.emit("CONTRACT_CREATE", [data1, data2, data3], info);
-        break;
-      case "CONTRACT_CREATE_ACK":
-        this.emit("CONTRACT_CREATE_ACK", [data1, data2, data3], info);
-        break;
-      case "CONTRACT_PING":
-        this.emit("CONTRACT_PING", [data1, data2, data3], info);
-        break;
-      default:
+        case "CONTRACT_CREATE":
+          this.emit("CONTRACT_CREATE", [data1, data2, data3], info);
+          break;
+        case "CONTRACT_CREATE_ACK":
+          this.emit("CONTRACT_CREATE_ACK", [data1, data2, data3], info);
+          break;
+        case "CONTRACT_PING":
+          this.emit("CONTRACT_PING", [data1, data2, data3], info);
+          break;
+
+        // CONTRACT PROOF MODULE
+        case "CONTRACT_PROOF":
+          this.emit("CONTRACT_PROOF", [data1, data2, data3, data4], info);
+          break;
+        case "CONTRACT_PROOF_ACK":
+          this.emit("CONTRACT_PROOF_ACK", [data1, data2, data3, data4], info)
+          break
+        default:
           break;
       }
-     // console.log('Received message:' + msg.toString());
-     // console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
+      // console.log('Received message:' + msg.toString());
+      // console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
     });
   }
 
@@ -67,7 +74,7 @@ class Udp extends EventEmitter {
         //console.log('Sent message: ' + message.toString() + ' to ' + host + ':' + udpHostPort);
       }
     });
-  }
+  };
 }
 
 export default Udp;
