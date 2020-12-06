@@ -6,19 +6,19 @@ import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import logger from "./util/logger";
 import { File, FileDbItem, ContractDb, Contract, ContractCandidate, NodesHandler } from "./types";
+import { getLocalId } from "./config";
 
 class FileManager {
+  localNodeId: number;
   fileDb: any;
   contractDb: any;
   nodeHandler: NodesHandler;
-  localNodeId: number;
-  
 
-  constructor(nodeHandler: NodesHandler, localNodeId: number) {
-    this.fileDb = new JsonDB(new Config("./db/fileDb_" + localNodeId, true, true, "/"));
-    this.contractDb = new JsonDB(new Config("./db/contractDb_" + localNodeId, true, true, "/"));
+  constructor(nodeHandler: NodesHandler) {
+    this.localNodeId = getLocalId();
+    this.fileDb = new JsonDB(new Config("./db/fileDb_" + this.localNodeId, true, true, "/"));
+    this.contractDb = new JsonDB(new Config("./db/contractDb_" + this.localNodeId, true, true, "/"));
     this.nodeHandler = nodeHandler;
-    this.localNodeId = localNodeId;
 
     this.syncFiles();
     cron.schedule("*/5 * * * * *", async () => {
