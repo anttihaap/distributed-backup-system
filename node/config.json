@@ -1,0 +1,39 @@
+{
+  "useTracker": false,
+  "localNodes": [
+    {
+      "id": 1,
+      "port": 1111,
+      "connectionPeerHost": "localhost",
+      "connectionPeerPort": "9999"
+    },
+    {
+      "id": 2,
+      "port": 2222,
+      "connectionPeerHost": "localhost",
+      "connectionPeerPort": "9999"
+    },
+    {
+      "id": 3,
+      "port": 3333,
+      "connectionPeerHost": "localhost",
+      "connectionPeerPort": "9999"
+    },
+    {
+      "id": 4,
+      "port": 4444,
+      "connectionPeerHost": "localhost",
+      "connectPeerPort": "9999"
+    },
+    {
+      "id": 5,
+      "port": 5555,
+      "connectionPeerHost": "localhost",
+      "connectionPeerPort": "9999"
+    },
+    {
+      "id": 9,
+      "port": 9999
+    }
+  ]
+}

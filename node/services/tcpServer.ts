@@ -1,18 +1,23 @@
 import net from "net";
 import fs, { WriteStream } from "fs";
 import path from "path";
+import FileManager from "../fileManager";
 
 class TcpServer {
+  id: number;
   server: net.Server;
+  fm: FileManager;
 
-  constructor(tcpPort: number, host: string) {
+  constructor(id: number, tcpPort: number, host: string, fm: FileManager) {
+    this.id = id;
     this.server = net.createServer();
+    this.fm = fm;
+
     this.server.listen(tcpPort, host, () => {
       console.log("TCP server started");
     });
 
     this.server.on("connection", (socket: net.Socket) => {
-      console.log("connection");
       let fileWriteStream: null | WriteStream = null;
       //let receivedFileData: Buffer[] = [];
       let receivedMetadata: Buffer[] = [];
@@ -22,27 +27,25 @@ class TcpServer {
           fileWriteStream?.write(data)
           return
         }
-
-
-        const indexOfDelimiter = data.toString("utf-8").indexOf(";");
+        const indexOfDelimiter = data.toString("utf-8").indexOf(":");
         if (indexOfDelimiter !== -1) {
-          const metaData = data.slice(0, indexOfDelimiter + 2);
+          const metaData = data.slice(0, indexOfDelimiter);
           const fileData = data.slice(indexOfDelimiter + 1, data.length);
           receivedMetadata.push(metaData);
-          fileWriteStream = fs.createWriteStream(path.resolve("./files_contract/" + parseInt(process.env.LOCAL_NODE_ID || "fail") + "_" + Buffer.concat(receivedMetadata).toString()))
-          fileWriteStream.write(fileData)
           receivedType = true;
 
-          const concatMeta = Buffer.concat(receivedMetadata);
-          console.log("METADATA", concatMeta);
+          const contractId = Buffer.concat(receivedMetadata).toString();
+          const filePath = fm.getReceivedContractFilePath(contractId)
+          fileWriteStream = fs.createWriteStream(filePath)
+          fileWriteStream.write(fileData)
         } else {
           receivedMetadata.push(data)
         }
       });
 
       socket.on("end", () => {
-        const test2 = Buffer.concat(receivedMetadata);
-        console.log("metadata", test2.toString());
+        const contractId = Buffer.concat(receivedMetadata);
+        console.log(`FILE RECEIVED for contract ${contractId}.`)
       });
 
       socket.on("error", (error) => {

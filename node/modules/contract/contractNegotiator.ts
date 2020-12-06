@@ -1,9 +1,8 @@
-import crypto from "crypto";
-import { ContractCandidate, NodesHandler } from "./types";
+import { ContractCandidate, NodesHandler } from "../../types";
 import cron from "node-cron";
-import Tracker from "./services/tracker";
-import udp from "./services/udp";
-import FileManager from "./fileManager";
+import udp from "../../services/udp";
+import FileManager from "../../fileManager";
+import { sha1smallstr, getRandomSha1 } from "../../util/hash";
 
 /**
  * Negotiates contracts for files that don't have any contracts.
@@ -54,15 +53,11 @@ class ContractNegotiator {
         return;
       }
 
-      const dateStr = (new Date()).valueOf().toString();
-      const random = Math.random().toString();
-      const randomHash = crypto.createHash('sha1').update(dateStr + random).digest('hex');
-
       const newContract = {
         waitingAck: true,
         pingCount: 0,
         creationTime: new Date().getTime(),
-        contractId: randomHash,
+        contractId: getRandomSha1(),
         contractNodeId: node.nodeId,
         contractNodeAddress: node.ip,
         contractNodePort: Number(node.port),
@@ -73,23 +68,21 @@ class ContractNegotiator {
         Number(newContract.contractNodePort),
         newContract.contractNodeAddress
       );
-      console.log('SEND CONTRACT_CREATE - ' + newContract.contractId)
+      console.log("SEND CONTRACT_CREATE - " + newContract.contractId);
     });
   };
 
   private enoughCandidates = () => {
     const filesWithoutContracts = this.fm.getFilesWithoutContract();
     if (filesWithoutContracts.length === 0) return true;
-    return this.contractsWithPings().length >= filesWithoutContracts.length;
+    return this.contractsWithAck().length >= filesWithoutContracts.length;
   };
-
 
   private onContractPing = async ([data1, data2]: string[]) => {
     const nodeId = data2;
     const contractId = data1;
     if (nodeId !== this.id) {
       console.log(`CONTRACT_PING - ERROR: wrong node id in contract`);
-      console.log("  wrong contract id in...");
       return;
     }
 
@@ -103,14 +96,15 @@ class ContractNegotiator {
     }
 
     if (contract.pingCount + 1 >= 3 && this.enoughCandidates()) {
-      const sortedByPingCount = [...this.contractCandidates].sort((a, b) => b.pingCount - a.pingCount)
-      this.contractCandidates = sortedByPingCount.slice(0, this.fm.getFilesWithoutContract().length)
+      const sortedByPingCount = [...this.contractCandidates].sort((a, b) => b.pingCount - a.pingCount);
+      this.contractCandidates = sortedByPingCount.slice(0, this.fm.getFilesWithoutContract().length);
     }
 
     if (contract.pingCount + 1 >= 10) {
-      console.log("CONTRACT ADDED -", contract.contractId);
+      console.log(`CONTRACT NEGOTIATION SUCCESSFULL - Add contract ${sha1smallstr(contract.contractId)}`);
       this.fm.addContract(contract, this.fm.getFilesWithoutContract()[0]);
       this.contractCandidates = this.contractCandidates.filter((c) => c.contractId != contract.contractId);
+      return;
     }
 
     this.contractCandidates = this.contractCandidates.map((contract) => {
@@ -120,7 +114,7 @@ class ContractNegotiator {
       return contract;
     });
 
-    console.log(`CONTRACT_PING - Pings: ${contract.pingCount + 1} - Contract: ${contractId}`);
+    console.log(`CONTRACT_PING received for ${sha1smallstr(contractId)}. Pings: ${contract.pingCount + 1}`);
   };
 
   private onContractCreateAck = async ([contractId, receiveNodeId, nodeId]: string[], info: any) => {
@@ -130,7 +124,9 @@ class ContractNegotiator {
     }
 
     if (this.enoughCandidates()) {
-      console.log("CONTRACT_CREATE_ACK - Reject. Enough contract candidates.");
+      console.log(
+        `CONTRACT_CREATE_ACK received - Reject contract ${sha1smallstr(contractId)}. Enough contract candidates.`
+      );
     }
 
     const contract = this.contractCandidates.find(
@@ -143,7 +139,7 @@ class ContractNegotiator {
       return;
     }
 
-    console.log("CONTRACT_CREATE_ACK - Successfull ack of message");
+    console.log(`CONTRACT_CREATE_ACK received - Start pinging candidate ${sha1smallstr(contractId)}`);
     this.contractCandidates = this.contractCandidates.map((c) => {
       if (c.contractId === contractId) {
         return { ...c, creationTime: new Date().getTime(), waitingAck: false };
@@ -157,11 +153,14 @@ class ContractNegotiator {
       console.log("CONTRACT_CREATE - ERROR: wrong nodeid");
       return;
     }
-    console.log("CONTRACT_CREATE - Send ACK");
-
     if (this.enoughCandidates()) {
-      console.log("CONTRACT_CREATE - Reject. Enough contract candidates.");
+      console.log(
+        `CONTRACT_CREATE received - REJECT contract ${sha1smallstr(contractId)}. Enough contract candidates.`
+      );
+      return;
     }
+
+    console.log(`CONTRACT_CREATE received - Respond with ACK. Start pinging contract ${sha1smallstr(contractId)}`);
 
     const nodeAddress = info.address;
     const nodePort = info.port;
@@ -194,6 +193,10 @@ class ContractNegotiator {
     return this.contractCandidates.filter((c) => c.pingCount > 0);
   };
 
+  private contractsWithAck = () => {
+    return this.contractCandidates.filter((c) => !c.waitingAck)
+  }
+
   private checkTTLCandidateContracts = async () => {
     this.contractCandidates = this.contractCandidates.reduce<Array<ContractCandidate>>((acc, curr) => {
       if (curr.creationTime + 30 * 1000 < new Date().getTime()) {
@@ -204,17 +207,20 @@ class ContractNegotiator {
   };
 
   private pingCandidateContracts = async () => {
-    console.log("PING CANDIDATES");
-    this.contractCandidates.forEach((contract) => {
-      if (!contract.waitingAck) {
-        console.log("PINGING -", contract.contractId);
-        this.udpClient.sendUdpMessage(
-          `CONTRACT_PING:${contract.contractId}:${contract.contractNodeId}`,
-          contract.contractNodePort,
-          contract.contractNodeAddress
-        );
+    const pings = this.contractCandidates.reduce<string[]>((acc, contract) => {
+      if (contract.waitingAck) {
+        return acc;
       }
-    });
+      this.udpClient.sendUdpMessage(
+        `CONTRACT_PING:${contract.contractId}:${contract.contractNodeId}`,
+        contract.contractNodePort,
+        contract.contractNodeAddress
+      );
+      return [...acc, sha1smallstr(contract.contractId)];
+    }, []);
+    if (pings.length > 0) {
+      console.log(`CONTRACT_PINGS sent for [${pings.join(", ")}]`);
+    }
   };
 }
 
