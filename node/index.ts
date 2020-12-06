@@ -19,7 +19,7 @@ const host = "localhost";
 
 const generalClientConfig = getGeneralConfig();
 const localClientConfig = getLocalNodeConfig();
-const localClientNodeIdDb = new JsonDB(new Config("./db/localClientNodeIdDb" + getLocalId(), true, true, "/"));
+const localClientNodeIdDb = new JsonDB(new Config("./files_db/localClientNodeIdDb" + getLocalId(), true, true, "/"));
 
 const getClientHash = (): string => {
   try {
@@ -75,7 +75,7 @@ const getPeerNodeHandler = () => {
 
 const nodeManager = getNodeHandler();
 const fm = new FileManager(nodeManager);
-const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm);
-const cm = new ContractManager(nodeManager, udpClient, nodeId, fm);
+const cn = new ContractNegotiator(nodeManager, udpClient, nodeId);
+const cm = new ContractManager(nodeManager, udpClient, nodeId);
 
-const ts = new TcpServer(localClientConfig.port - 1, host, fm);
+const ts = new TcpServer(localClientConfig.port - 1, host);

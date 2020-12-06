@@ -1,11 +1,14 @@
 import cron from "node-cron";
-import logger from "../../util/logger";
 
 import { NodesHandler } from "../../types";
 import Udp from "../../services/udp";
-import FileManager from "../../fileManager";
 import { sendFile } from "../../services/tcpClient";
 import { sha1smallstr } from "../../util/hash";
+
+import { getContracts, setContractFileSent } from "../../db/contractDb";
+import { getFilePath } from "../../db/fileDb";
+
+import logger from "../../util/logger";
 
 interface ContractFileSentList {
   contractId: string;
@@ -15,14 +18,12 @@ interface ContractFileSentList {
 class ContractFileSender {
   nodesHandler: NodesHandler;
   udpClient: Udp;
-  fm: FileManager;
 
   contractFailures: ContractFileSentList[];
 
-  constructor(nodesHandler: NodesHandler, udpClient: Udp, id: string, fm: FileManager) {
+  constructor(nodesHandler: NodesHandler, udpClient: Udp, id: string) {
     this.nodesHandler = nodesHandler;
     this.udpClient = udpClient;
-    this.fm = fm;
 
     this.contractFailures = [];
 
@@ -33,9 +34,9 @@ class ContractFileSender {
   }
 
   private checkContractsWithoutFileSent = async () => {
-    const contractsWithoutFileSent = this.fm
-      .getContracts()
-      .filter((contract) => !contract.fileSent && !contract.fileSendingInProgress);
+    const contractsWithoutFileSent = getContracts().filter(
+      (contract) => !contract.fileSent && !contract.fileSendingInProgress
+    );
     if (contractsWithoutFileSent.length === 0) return;
 
     contractsWithoutFileSent.forEach((contract) => {
@@ -54,7 +55,7 @@ class ContractFileSender {
         contract,
         Number(contractNode.port) - 1,
         contractNode.ip,
-        this.fm.getFilePath(contract.file.name),
+        getFilePath(contract.fileName),
         this.onFileSentSuccess.bind(this),
         this.onFileSentError.bind(this)
       );
@@ -63,7 +64,7 @@ class ContractFileSender {
 
   private onFileSentSuccess = (contractId: string) => {
     logger.log("info", `CONTRACT FILE SEND - Successful for ${sha1smallstr(contractId)}`);
-    this.fm.setContractFileSent(contractId);
+    setContractFileSent(contractId);
   };
 
   private onFileSentError = (contractId: string, err: Error) => {
