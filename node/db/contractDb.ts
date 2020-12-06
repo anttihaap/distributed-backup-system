@@ -5,7 +5,7 @@ import path from "path";
 
 import { Contract, ContractCandidate, File, ContractDb } from "../types";
 
-import { getFileNames, addContractForFile, fileExistsInDb, getFileNameContractCount } from "./fileDb";
+import { getFileNames, addContractForFile, fileExistsInDb, getFileNameContractCount, removeContractFromFile } from "./fileDb";
 
 import logger from "../util/logger";
 
@@ -52,6 +52,12 @@ export const addContract = async (contractCandidate: ContractCandidate) => {
 
   addContractForFile(fileName, contract.contractId);
 };
+
+export const removeContract = async (contractId: string) => {
+  const contract = contractDb.getData("/" + contractId) as Contract;
+  contractDb.delete("/" + contractId);
+  removeContractFromFile(contractId, contract.fileName)
+}
 
 export const setContractFileSent = (contractId: string) => {
   try {

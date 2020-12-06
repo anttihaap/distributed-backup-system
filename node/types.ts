@@ -39,7 +39,6 @@ export interface Contract {
   contractNodeId: string;
   fileName: string;
   fileSent: boolean;
-  fileSendingInProgress: boolean;
 }
 
 export interface NodesHandler {

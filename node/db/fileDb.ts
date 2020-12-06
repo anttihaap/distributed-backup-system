@@ -29,6 +29,12 @@ export const getFileNames = async () => {
   return await readFileNames();
 };
 
+export const removeContractFromFile = async (contractId: string, fileName: string) => {
+  const file = fileDb.getData("/" + fileName) as FileDbItem;
+  const updatedFileContracts = file.contracts.filter((c) => c !== contractId);
+  fileDb.push("/" + fileName, { ...file, contracts: updatedFileContracts });
+};
+
 export const getFileNameContractCount = (fileName: string) => {
   try {
     const file = fileDb.getData("/" + fileName) as FileDbItem;
