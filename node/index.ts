@@ -49,6 +49,7 @@ const getNodeHandler = (): NodesHandler => {
 };
 
 const getPeerNodeHandler = () => {
+  //
   // Create peer node
   const createFirstPeerNode = (port: number) => {
     const peer = new Peer(nodeId, "localhost", port, udpClient);

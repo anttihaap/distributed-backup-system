@@ -1,7 +1,7 @@
 import net from "net";
 import fs, { WriteStream } from "fs";
-import path from "path";
 import FileManager from "../fileManager";
+import logger from "../util/logger";
 
 class TcpServer {
   id: number;
@@ -24,8 +24,8 @@ class TcpServer {
       let receivedType: boolean = false;
       socket.on("data", (data) => {
         if (receivedType) {
-          fileWriteStream?.write(data)
-          return
+          fileWriteStream?.write(data);
+          return;
         }
         const indexOfDelimiter = data.toString("utf-8").indexOf(":");
         if (indexOfDelimiter !== -1) {
@@ -35,21 +35,21 @@ class TcpServer {
           receivedType = true;
 
           const contractId = Buffer.concat(receivedMetadata).toString();
-          const filePath = fm.getReceivedContractFilePath(contractId)
-          fileWriteStream = fs.createWriteStream(filePath)
-          fileWriteStream.write(fileData)
+          const filePath = fm.getReceivedContractFilePath(contractId);
+          fileWriteStream = fs.createWriteStream(filePath);
+          fileWriteStream.write(fileData);
         } else {
-          receivedMetadata.push(data)
+          receivedMetadata.push(data);
         }
       });
 
       socket.on("end", () => {
         const contractId = Buffer.concat(receivedMetadata);
-        console.log(`FILE RECEIVED for contract ${contractId}.`)
+        logger.log("info", `FILE RECEIVED for contract ${contractId}.`);
       });
 
       socket.on("error", (error) => {
-        console.log("ERROR", error);
+        logger.log("warn", `FILE RECEIVE FAILED - ${error}`);
       });
     });
   }

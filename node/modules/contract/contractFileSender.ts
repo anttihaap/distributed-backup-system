@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import logger from "../../util/logger";
 
 import { NodesHandler } from "../../types";
 import Udp from "../../services/udp";
@@ -41,7 +42,12 @@ class ContractFileSender {
       const contractNode = this.nodesHandler.getNode(contract.contractNodeId);
       if (!contractNode) {
         // TODO!!!!
-        console.log("erroring...");
+        logger.log(
+          "warn",
+          `CONTRACT PROOF - Can't send proof. Can't find node ${contract.contractNodeId} for contract ${sha1smallstr(
+            contract.contractId
+          )}`
+        );
         return;
       }
       sendFile(
@@ -56,12 +62,12 @@ class ContractFileSender {
   };
 
   private onFileSentSuccess = (contractId: string) => {
-    console.log(`CONTRACT FILE SEND - Successful for ${sha1smallstr(contractId)}`);
+    logger.log("info", `CONTRACT FILE SEND - Successful for ${sha1smallstr(contractId)}`);
     this.fm.setContractFileSent(contractId);
   };
 
   private onFileSentError = (contractId: string, err: Error) => {
-    console.log(`CONTRACT FILE SEND - ERROR for ${sha1smallstr(contractId)} - Error: ${err}`);
+    logger.log("warn", `CONTRACT FILE SEND - ERROR for ${sha1smallstr(contractId)} - Error: ${err}`);
     const failures = this.contractFailures.find((c) => c.contractId === contractId);
     if (!failures) {
       this.contractFailures = [...this.contractFailures, { contractId, sentFailCount: 1 }];
@@ -84,7 +90,7 @@ class ContractFileSender {
     }, []);
     // Too many failures!!!
     if (contractsWithTooManyfailures.length > 1) {
-      console.log("TOO MANY FAILURES FOR SENDING FILE. TODO SOMETHING.");
+      logger.log("warn", "TOO MANY FAILURES FOR SENDING FILE. TODO SOMETHING.");
     }
   };
 }
