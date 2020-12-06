@@ -41,7 +41,7 @@ const nodeId = getClientHash();
 
 const udpClient = new UdpClient(localClientConfig.port);
 
-const logWriter = logger(nodeId)
+const logWriter = logger(localNodeId.toString())
 
 const getNodeHandler = (): NodesHandler => {
   if (generalClientConfig.useTracker) {
