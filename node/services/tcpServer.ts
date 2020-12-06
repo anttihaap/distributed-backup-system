@@ -1,17 +1,19 @@
 import net from "net";
 import fs, { WriteStream } from "fs";
-import path from "path";
 import FileManager from "../fileManager";
+import { Logger } from "winston";
 
 class TcpServer {
   id: number;
   server: net.Server;
   fm: FileManager;
+  logger: Logger;
 
-  constructor(id: number, tcpPort: number, host: string, fm: FileManager) {
+  constructor(id: number, tcpPort: number, host: string, fm: FileManager, logger: Logger) {
     this.id = id;
     this.server = net.createServer();
     this.fm = fm;
+    this.logger = logger;
 
     this.server.listen(tcpPort, host, () => {
       console.log("TCP server started");
@@ -24,8 +26,8 @@ class TcpServer {
       let receivedType: boolean = false;
       socket.on("data", (data) => {
         if (receivedType) {
-          fileWriteStream?.write(data)
-          return
+          fileWriteStream?.write(data);
+          return;
         }
         const indexOfDelimiter = data.toString("utf-8").indexOf(":");
         if (indexOfDelimiter !== -1) {
@@ -35,21 +37,21 @@ class TcpServer {
           receivedType = true;
 
           const contractId = Buffer.concat(receivedMetadata).toString();
-          const filePath = fm.getReceivedContractFilePath(contractId)
-          fileWriteStream = fs.createWriteStream(filePath)
-          fileWriteStream.write(fileData)
+          const filePath = fm.getReceivedContractFilePath(contractId);
+          fileWriteStream = fs.createWriteStream(filePath);
+          fileWriteStream.write(fileData);
         } else {
-          receivedMetadata.push(data)
+          receivedMetadata.push(data);
         }
       });
 
       socket.on("end", () => {
         const contractId = Buffer.concat(receivedMetadata);
-        console.log(`FILE RECEIVED for contract ${contractId}.`)
+        this.logger.log("info", `FILE RECEIVED for contract ${contractId}.`);
       });
 
       socket.on("error", (error) => {
-        console.log("ERROR", error);
+        this.logger.log("warn", `FILE RECEIVE FAILED - ${error}`);
       });
     });
   }

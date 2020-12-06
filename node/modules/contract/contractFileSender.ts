@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import { Logger } from "winston";
 
 import { NodesHandler } from "../../types";
 import Udp from "../../services/udp";
@@ -15,13 +16,15 @@ class ContractFileSender {
   nodesHandler: NodesHandler;
   udpClient: Udp;
   fm: FileManager;
+  logger: Logger;
 
   contractFailures: ContractFileSentList[];
 
-  constructor(nodesHandler: NodesHandler, udpClient: Udp, id: string, fm: FileManager) {
+  constructor(nodesHandler: NodesHandler, udpClient: Udp, id: string, fm: FileManager, logger: Logger) {
     this.nodesHandler = nodesHandler;
     this.udpClient = udpClient;
     this.fm = fm;
+    this.logger = logger;
 
     this.contractFailures = [];
 
@@ -41,7 +44,12 @@ class ContractFileSender {
       const contractNode = this.nodesHandler.getNode(contract.contractNodeId);
       if (!contractNode) {
         // TODO!!!!
-        console.log("erroring...");
+        this.logger.log(
+          "warn",
+          `CONTRACT PROOF - Can't send proof. Can't find node ${contract.contractNodeId} for contract ${sha1smallstr(
+            contract.contractId
+          )}`
+        );
         return;
       }
       sendFile(
@@ -56,12 +64,12 @@ class ContractFileSender {
   };
 
   private onFileSentSuccess = (contractId: string) => {
-    console.log(`CONTRACT FILE SEND - Successful for ${sha1smallstr(contractId)}`);
+    this.logger.log("info", `CONTRACT FILE SEND - Successful for ${sha1smallstr(contractId)}`);
     this.fm.setContractFileSent(contractId);
   };
 
   private onFileSentError = (contractId: string, err: Error) => {
-    console.log(`CONTRACT FILE SEND - ERROR for ${sha1smallstr(contractId)} - Error: ${err}`);
+    this.logger.log("warn", `CONTRACT FILE SEND - ERROR for ${sha1smallstr(contractId)} - Error: ${err}`);
     const failures = this.contractFailures.find((c) => c.contractId === contractId);
     if (!failures) {
       this.contractFailures = [...this.contractFailures, { contractId, sentFailCount: 1 }];
@@ -84,7 +92,7 @@ class ContractFileSender {
     }, []);
     // Too many failures!!!
     if (contractsWithTooManyfailures.length > 1) {
-      console.log("TOO MANY FAILURES FOR SENDING FILE. TODO SOMETHING.");
+      this.logger.log("warn", "TOO MANY FAILURES FOR SENDING FILE. TODO SOMETHING.");
     }
   };
 }

@@ -79,8 +79,8 @@ const getPeerNodeHandler = () => {
 };
 
 const nodeManager = getNodeHandler();
-const fm = new FileManager(nodeManager, localNodeId);
-const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm);
-const cm = new ContractManager(localNodeId, nodeManager, udpClient, nodeId, fm);
+const fm = new FileManager(nodeManager, localNodeId, logWriter);
+const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm, logWriter);
+const cm = new ContractManager(localNodeId, nodeManager, udpClient, nodeId, fm, logWriter);
 
-const ts = new TcpServer(localNodeId, localClientConfig.port - 1, host, fm);
+const ts = new TcpServer(localNodeId, localClientConfig.port - 1, host, fm, logWriter);

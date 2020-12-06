@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
+import { Logger } from "winston";
 
 import { File, FileDbItem, ContractDb, Contract, ContractCandidate, NodesHandler } from "./types";
 
@@ -12,12 +13,14 @@ class FileManager {
   contractDb: any;
   nodeHandler: NodesHandler;
   localNodeId: number;
+  logger: Logger;
 
-  constructor(nodeHandler: NodesHandler, localNodeId: number) {
+  constructor(nodeHandler: NodesHandler, localNodeId: number, logger: Logger) {
     this.fileDb = new JsonDB(new Config("./db/fileDb_" + localNodeId, true, true, "/"));
     this.contractDb = new JsonDB(new Config("./db/contractDb_" + localNodeId, true, true, "/"));
     this.nodeHandler = nodeHandler;
     this.localNodeId = localNodeId;
+    this.logger = logger;
 
     this.syncFiles();
     cron.schedule("*/5 * * * * *", async () => {
@@ -40,6 +43,10 @@ class FileManager {
     try {
       this.fileDb.getData("/" + file.name);
     } catch (_) {
+      this.logger.log(
+        "error",
+        `ADD CONTRACT - Can't add contract ${contractCandidate.contractId} file ${file.name} doesn't exist.`
+      );
       throw "File not in file db";
     }
 
@@ -58,11 +65,12 @@ class FileManager {
       const contract = this.contractDb.getData("/" + contractId) as Contract;
       this.contractDb.push("/" + contractId, {
         ...contract,
-       fileSent: true, 
-       fileSendingInProgress: false,
-      } as Contract)
-    } catch(_) {
-      throw "Trying to set file sent for contract that doesn't exist. Id: " + contractId; 
+        fileSent: true,
+        fileSendingInProgress: false,
+      } as Contract);
+    } catch (_) {
+      this.logger.log("error", `SET CONTRACT FILE SENT - Contract ${contractId} doesn't exist.`)
+      throw "Trying to set file sent for contract that doesn't exist. Id: " + contractId;
     }
   }
 
@@ -83,11 +91,11 @@ class FileManager {
 
   getFilePath = (fileName: string) => {
     return path.resolve("./files/" + fileName);
-  }
+  };
 
   getReceivedContractFilePath = (contractId: string) => {
-    return path.resolve(`./files_contract/${this.localNodeId}_${contractId}`)
-  }
+    return path.resolve(`./files_contract/${this.localNodeId}_${contractId}`);
+  };
 
   /**
    * Convert database to a list.
@@ -99,15 +107,15 @@ class FileManager {
 
   getContract(contractId: string): Contract | undefined {
     try {
-      const contract = this.contractDb.getData("/" + contractId)
+      const contract = this.contractDb.getData("/" + contractId);
       return contract;
-    } catch(_) {
-      return undefined
+    } catch (_) {
+      return undefined;
     }
   }
 
   syncFiles = async () => {
-    console.log("SYNC FILES");
+    this.logger.log("info", "SYNC FILES");
 
     const files = await this.readFiles();
     files.forEach((fileName: any) => {
@@ -126,7 +134,7 @@ class FileManager {
     });
     const shouldContactRequest = this.getFilesWithoutContract().length > 0;
     if (this.nodeHandler.getRequestingContracts() !== shouldContactRequest) {
-      console.log("SET is requesting contracts:", shouldContactRequest);
+      this.logger.log("info", "SET is requesting contracts:", shouldContactRequest);
       this.nodeHandler.setRequestingContracts(this.getFilesWithoutContract().length > 0);
     }
   };

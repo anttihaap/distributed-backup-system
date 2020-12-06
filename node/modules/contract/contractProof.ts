@@ -1,6 +1,7 @@
 import fs from "fs";
 import crypto from "crypto";
 import cron from "node-cron";
+import { Logger } from "winston";
 
 import FileManager from "../../fileManager";
 import { NodesHandler } from "../../types";
@@ -23,14 +24,23 @@ class ContractProofModule {
   fm: FileManager;
   nodeManager: NodesHandler;
   udpClient: Udp;
+  logger: Logger;
 
   proofRequestList: ContractProof[];
 
-  constructor(localNodeId: number, nodeManager: NodesHandler, udpClient: Udp, id: string, fm: FileManager) {
+  constructor(
+    localNodeId: number,
+    nodeManager: NodesHandler,
+    udpClient: Udp,
+    id: string,
+    fm: FileManager,
+    logger: Logger
+  ) {
     this.localNodeId = localNodeId;
     this.nodeManager = nodeManager;
     this.udpClient = udpClient;
     this.fm = fm;
+    this.logger = logger;
 
     this.proofRequestList = [];
     this.udpClient.on("CONTRACT_PROOF", this.handleContractProof);
@@ -50,15 +60,17 @@ class ContractProofModule {
         const existingProof = this.proofRequestList.find((c) => c.contractId === contract.contractId);
         const node = this.nodeManager.getNodes().find((n) => n.nodeId === contract.contractNodeId);
         if (!node) {
-          console.log(
-            `CONTRACT_PROOF error: can't find node ${contract.contractNodeId} for contract ${sha1smallstr(
+          this.logger.log(
+            "warn",
+            `CONTRACT_PROOF: can't find node ${contract.contractNodeId} for contract ${sha1smallstr(
               contract.contractId
             )}`
           );
           return;
         }
         if (existingProof) {
-          console.log(
+          this.logger.log(
+            "info",
             `CONTRACT_PROOF - send EXISTING - ${sha1smallstr(
               contract.contractId
             )}. Expecting start hash: ${sha1smallstr(existingProof.expectedStartSha1)} and end hash: ${sha1smallstr(
@@ -81,7 +93,8 @@ class ContractProofModule {
             return;
           }
 
-          console.log(
+          this.logger.log(
+            "info",
             `CONTRACT_PROOF - send NEW - ${sha1smallstr(contract.contractId)}. Expecting start hash: ${sha1smallstr(
               sha1start
             )} and end hash: ${sha1smallstr(sha1end)}`
@@ -109,7 +122,10 @@ class ContractProofModule {
   private checkTTLofProofs = async () => {
     this.proofRequestList.forEach((proofReq) => {
       if (proofReq.creationUnixTime + TTLofProof < new Date().getTime()) {
-        console.log(`CONTRACT PROOF not received in time for contract ${sha1smallstr(proofReq.contractId)}`);
+        this.logger.log(
+          "warn",
+          `CONTRACT PROOF not received in time for contract ${sha1smallstr(proofReq.contractId)}`
+        );
         this.proofRequestList = this.proofRequestList.filter((proof) => proof.contractId === proofReq.contractId);
       }
     });
@@ -118,12 +134,13 @@ class ContractProofModule {
   private handleContractProof = async ([contractId, middlepoint]: string[]) => {
     const contract = this.fm.getContract(contractId);
     if (!contract) {
-      console.log("CONTRACT_PROOF - No contract:", contractId);
+      this.logger.log("warn", "CONTRACT_PROOF - No contract:", contractId);
       return;
     }
     const node = this.nodeManager.getNodes().find((n) => n.nodeId === contract.contractNodeId);
     if (!node) {
-      console.log(
+      this.logger.log(
+        "warn",
         `CONTRACT PROOF error: cant find node ${contract.contractNodeId} for contract ${contract.contractId}`
       );
       return;
@@ -131,7 +148,8 @@ class ContractProofModule {
     const contractFilePath = this.fm.getReceivedContractFilePath(contract.contractId);
 
     const { sha1start, sha1end } = await this.createHashesWithMiddlePoint(contractFilePath, Number(middlepoint));
-    console.log(
+    this.logger.log(
+      "info",
       `CONTRACT_PROOF - RECEIVED for ${sha1smallstr(
         contract.contractId
       )} with middlepoint ${middlepoint}. Answering sha1start ${sha1smallstr(sha1start)}, sha1end ${sha1smallstr(
@@ -149,7 +167,7 @@ class ContractProofModule {
   private handleContractProofAck = ([contractId, middlePointForSha1, sha1Start, sha1End]: string[]) => {
     const contractProof = this.proofRequestList.find((proof) => proof.contractId === contractId);
     if (!contractProof) {
-      console.log(`CONTRACT_PROOF_ACK - WRONG proof received - ${sha1smallstr(contractId)}`);
+      this.logger.log("info", `CONTRACT_PROOF_ACK - WRONG proof received - ${sha1smallstr(contractId)}`);
       return;
     }
 
@@ -158,7 +176,8 @@ class ContractProofModule {
       contractProof.expectedStartSha1 !== sha1Start ||
       contractProof.expectedEndSha1 !== sha1End
     ) {
-      console.log(
+      this.logger.log(
+        "info",
         `CONTRACT_PROOF_ACK - WRONG proof. Expecting for middlepoint ${
           contractProof.middlePointForSha1
         } sha1Start ${sha1smallstr(contractProof.expectedEndSha1)} and sha1end: ${sha1smallstr(
@@ -168,7 +187,7 @@ class ContractProofModule {
         )} and sha1End ${sha1smallstr(sha1End)}.`
       );
     } else {
-      console.log(`CONTRACT_PROOF_ACK for ${sha1smallstr(contractId)} - Successfull proof received.`);
+      this.logger.log("info", `CONTRACT_PROOF_ACK for ${sha1smallstr(contractId)} - Successfull proof received.`);
       this.proofRequestList = this.proofRequestList.filter((proof) => proof.contractId !== contractId);
     }
   };
