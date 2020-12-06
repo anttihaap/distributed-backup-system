@@ -105,7 +105,6 @@ class ContractNegotiator {
       logger.log("info", `CONTRACT NEGOTIATION SUCCESSFULL - Add contract ${sha1smallstr(contract.contractId)}`);
       addContract(contract);
       this.contractCandidates = this.contractCandidates.filter((c) => c.contractId !== contract.contractId);
-      console.log(this.contractCandidates)
       return;
     }
 
@@ -206,7 +205,7 @@ class ContractNegotiator {
   private checkTTLCandidateContracts = async () => {
     this.contractCandidates = this.contractCandidates.reduce<Array<ContractCandidate>>((acc, curr) => {
       if (curr.creationTime + 30 * 1000 < new Date().getTime()) {
-        logger.log("info", `CONTRACT CANDIDATE ${sha1smallstr(curr.contractId)} TTL expired. Removing.`)
+        logger.log("warn", `CONTRACT CANDIDATE ${sha1smallstr(curr.contractId)} TTL expired. Removing.`)
         return acc;
       }
       return [...acc, curr];

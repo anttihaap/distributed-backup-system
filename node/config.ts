@@ -37,7 +37,6 @@ export const getGeneralConfig = () => {
 };
 
 export const getLocalNodeConfig = () => {
-  console.log(config);
   if (config.localNodes === undefined) {
     throw "Add localNodes to config";
   }
