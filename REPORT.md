@@ -25,16 +25,16 @@ The peer nodes of the network form a ring as in the Chord protocol. A node has a
 
 ### Communication
 
-The messaging between the nodes (e.g. proposing a contract for multiple nodes in the network) is conducted with UDP. The file transfer is done over TCP for reliability. Messages are passed clockwise in the ring when a new node joins. When the address of the receiving node is known (e.g. file's backup nodes), messages are sent directly between the two nodes. PING messages are multicast to all nodes.
+The messaging between the nodes (e.g. proposing a contract for nodes in the network, nodes joining the network) is conducted with UDP. The file transfer is done over TCP connection for reliability. Messages are passed clockwise in the ring when a new node joins. When the address of the receiving node is known (e.g. file's backup nodes), messages are sent directly between the two nodes. PING messages (for refreshing node state) are multicast to all nodes.
 
 #### Joining the network:    
 
-In order to join the network, the address and port of some node already in the network has to be known. The network has a messaging protocol with the following message strings:
+In order to join the network, the address and port of some node already in the network has to be known. The network uses a messaging protocol with the following message strings:
 
-    JOIN:nodeId:host:port                               The joining node sends JOIN to a node that it knows in the network
-    ACK_JOIN:nodeId:host:port:predId:predHost:predPort  A node that accepts JOIN sends ACK_JOIN to the joining node
-    NOTIFY:nodeId:host:port                             The joining node sends NOTIFY to its new predecessor
-    NEW_NODE:nodeId:host:port                           Will be passed around the ring after the new node has joined
+    JOIN:nodeId:host:port                               The joining node (nodeId) sends JOIN to a node that it knows in the network.
+    ACK_JOIN:nodeId:host:port:predId:predHost:predPort  A node that accepts JOIN (nodeId) sends ACK_JOIN to the joining node
+    NOTIFY:nodeId:host:port                             The joining node (nodeId) sends NOTIFY to its new predecessor
+    NEW_NODE:nodeId:host:port                           This message will be passed around the ring after the new node (nodeId) has joined
 
 When a node wants to join the network it sends a JOIN message to a node that it knows in the network. The JOIN message is passed clockwise in the network from smaller nodeId value to greater until the right place is found. The node that will be the successor to the new node sends an ACK_JOIN to the joining node with information about its current predecessor. It also updates the new node to its predecessor.    
 
@@ -51,9 +51,9 @@ First and second nodes in the network (special case):
 
     PING:nodeId:host:port:contractRequest               Sent periodically to update TTL and contract request status
 
-Every node in the network will send a PING message frequently to other nodes to notify that they are still alive. The message also contains a boolean value to indicate if the node is willing to accept new file contracts. When a node receives a PING message it will update the node on its node list with a fresh timestamp and the contract request status.
+Every node in the network will send a PING message frequently to other nodes to notify that they are still alive. The message also contains a boolean value to indicate if the node is willing to accept new file contracts. When a node receives a PING message it will update the sending node on its node list with a fresh timestamp and the contract request status.
 
-An update function is run periodically to remove expired nodes from the node list. The predecessor and successor are also updated, if necessary.
+An update function is run periodically to remove expired nodes from the node list. The predecessor and successor are also updated in this function, if necessary.
 
 #### Creating a contract and transferring files:
 
@@ -70,21 +70,21 @@ After the hybrid model of the P2P network was up we decided to try to get rid of
 
 The contract manager and file transfer ... ...
 
-The schedule of the project was tight but manageable.
+The schedule of the project was tight but manageable. 
 
 ## Scaling and performance
 
-The network is very scalable and our hashing and naming protocol will in theory enable 2<sup>32</sup> nodes to join the network. In practice, hash collisions would probably happen (this has not been solved in the project). Joining the network will happen in O(n) time, as the NEW_NODE message will go around the whole circle to notify other nodes. The PING messages to keep the nodes timestamp fresh will currently be sent to all nodes in the network. This will result in n<sup>2</sup> messages in the network every ten seconds. This will not be a problem in the smaller networks tested for this project but for networks with perhaps thousands of nodes a more efficient way of messaging should be implemented. For instance, a node list could be restricted to only hold 10 nearest successors and the nodes with backup files.
+The network is very scalable and our hashing and naming protocol will in theory enable 2<sup>32</sup> nodes to join the network. In practice, hash collisions would probably happen (this has not been solved in the project). Joining the network will happen in O(n) time, as the NEW_NODE message will go around the whole circle to notify other nodes. The PING messages to keep the nodes timestamp fresh will currently be sent to all nodes in the network. This will result in n<sup>2</sup> messages in the network sent every ten seconds. This will not be a problem in the smaller networks tested for this project but for networks with perhaps thousands of nodes, a more efficient way of messaging should be implemented. For instance, a node list could be restricted to only hold 10 nearest successors and the nodes with backup files.
 
 ## Functionalities 
 
 ### Naming
 
-Each node has a unique identifier that is hashed from its address string (host:port) using SHA-1. However, only the first six characters of the hash string are used as an identifier in order to avoid values that are too large for comparing when the node joins the ring. Perhaps another way of comparing the strings would have worked better here. When a node re-joins, it will receive the same identifier. It will again be discoverable by other nodes that may have files backed up with that node.
+Each node has a unique identifier that is hashed from its address string (host:port) using SHA-1. However, only the first six characters of the hash string are used as an identifier in order to avoid values that are too large for comparing when the node joins the ring. When a node re-joins, it will receive the same identifier. It will again be discoverable by other nodes that may have files backed up with that node.
 
 ### Node discovery
 
-When a node has joined the network [(see: Joining the network)](#Joining-the-network) it will be added to all other nodes' nodelists. It will start receiving PINGs that all of the nodes are broadcasting to their node lists. The new node will then add the nodes whose PINGs it has received to its own node list. The node lists will be updated periodically and nodes with expired timestamps will be removed.
+When a node has joined the network [(see: Joining the network)](#Joining-the-network) it will be added to all other nodes' node lists. It will start receiving PINGs that all of the nodes are broadcasting to their node lists. The new node will then add the nodes whose PINGs it has received to its own node list. The node lists will be updated periodically and nodes with expired timestamps will be removed.
 
 ### Consistency and synchronization
 
@@ -92,7 +92,7 @@ To ensure the consistency of the overlay network, the nodelists are updated freq
 
 ### Fault tolerance and recovery
 
-When a node leaves suddenly, the other nodes stop receiving its PINGs. After a node's timestamp has expired, that node will be removed from the nodelists. Checking of the timestamps and updating the lists occurs once every minute. The update function alse checks, if the predecessor or successor needs to be updated due to the expired node. The nodes will PING more frequently than the update function is run, so a couple of lost PING messageswill be tolerated. When a node re-joins the network, it will receive the same id and join with the usual protocol [(see: Joining the network)](#Joining-the-network).
+When a node leaves suddenly, the other nodes stop receiving its PINGs. After a node's timestamp has expired, that node will be removed from the nodelists. Checking of the timestamps and updating the lists occurs with twenty second intervals. The update function alse checks if the predecessor or successor needs to be updated due to the expired node. The nodes will PING more frequently than the update function is run, so a couple of lost PING messages will be tolerated. When a node re-joins the network, it will receive the same id and join with the usual protocol [(see: Joining the network)](#Joining-the-network).
 
 All nodes in the network will send PING messages periodically to let other nodes know that they are still alive. All nodes will update their node lists with the time of the last PING. If a node has not PINGed in a while it will be removed from the nodelists and the predecessor and successor of affected nodes will be updated.
 
