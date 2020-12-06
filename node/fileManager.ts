@@ -4,8 +4,7 @@ import path from "path";
 import fs from "fs";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
-import { Logger } from "winston";
-
+import logger from "./util/logger";
 import { File, FileDbItem, ContractDb, Contract, ContractCandidate, NodesHandler } from "./types";
 
 class FileManager {
@@ -13,14 +12,13 @@ class FileManager {
   contractDb: any;
   nodeHandler: NodesHandler;
   localNodeId: number;
-  logger: Logger;
+  
 
-  constructor(nodeHandler: NodesHandler, localNodeId: number, logger: Logger) {
+  constructor(nodeHandler: NodesHandler, localNodeId: number) {
     this.fileDb = new JsonDB(new Config("./db/fileDb_" + localNodeId, true, true, "/"));
     this.contractDb = new JsonDB(new Config("./db/contractDb_" + localNodeId, true, true, "/"));
     this.nodeHandler = nodeHandler;
     this.localNodeId = localNodeId;
-    this.logger = logger;
 
     this.syncFiles();
     cron.schedule("*/5 * * * * *", async () => {
@@ -43,7 +41,7 @@ class FileManager {
     try {
       this.fileDb.getData("/" + file.name);
     } catch (_) {
-      this.logger.log(
+      logger.log(
         "error",
         `ADD CONTRACT - Can't add contract ${contractCandidate.contractId} file ${file.name} doesn't exist.`
       );
@@ -69,7 +67,7 @@ class FileManager {
         fileSendingInProgress: false,
       } as Contract);
     } catch (_) {
-      this.logger.log("error", `SET CONTRACT FILE SENT - Contract ${contractId} doesn't exist.`)
+      logger.log("error", `SET CONTRACT FILE SENT - Contract ${contractId} doesn't exist.`)
       throw "Trying to set file sent for contract that doesn't exist. Id: " + contractId;
     }
   }
@@ -115,7 +113,7 @@ class FileManager {
   }
 
   syncFiles = async () => {
-    this.logger.log("info", "SYNC FILES");
+    logger.log("info", "SYNC FILES");
 
     const files = await this.readFiles();
     files.forEach((fileName: any) => {
@@ -134,7 +132,7 @@ class FileManager {
     });
     const shouldContactRequest = this.getFilesWithoutContract().length > 0;
     if (this.nodeHandler.getRequestingContracts() !== shouldContactRequest) {
-      this.logger.log("info", "SET is requesting contracts:", shouldContactRequest);
+      logger.log("info", "SET is requesting contracts:", shouldContactRequest);
       this.nodeHandler.setRequestingContracts(this.getFilesWithoutContract().length > 0);
     }
   };

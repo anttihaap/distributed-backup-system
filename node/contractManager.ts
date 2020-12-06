@@ -1,7 +1,7 @@
 import { NodesHandler } from "./types";
 import cron from "node-cron";
 import udp from "./services/udp";
-import { Logger } from "winston";
+import logger from "./util/logger"
 
 import FileManager from "./fileManager";
 import ContractProof from "./modules/contract/contractProof";
@@ -14,21 +14,19 @@ class ContractManager {
   fm: FileManager;
   udp: udp;
   id: string;
-  logger: Logger;
 
-  constructor(localNodeId: number, nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager, logger: Logger) {
+  constructor(localNodeId: number, nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager) {
     this.nodeHandler = nodeManager;
     this.udp = udp;
     this.fm = fm;
     this.id = id;
-    this.logger = logger;
 
     cron.schedule("*/10 * * * * *", async () => {
       this.pingContracts();
     });
 
-    const contractProof = new ContractProof(localNodeId, this.nodeHandler, this.udp, this.id, this.fm, this.logger);
-    const contractFileSender = new ContractFileSender(this.nodeHandler, this.udp, this.id, this.fm, this.logger);
+    const contractProof = new ContractProof(localNodeId, this.nodeHandler, this.udp, this.id, this.fm);
+    const contractFileSender = new ContractFileSender(this.nodeHandler, this.udp, this.id, this.fm);
   }
 
   private pingContracts = async () => {
@@ -36,7 +34,7 @@ class ContractManager {
     const pings = this.fm.getContracts().map((contract) => {
       const node = nodes.find((n) => n.nodeId === contract.contractNodeId);
       if (!node) {
-        this.logger.log(
+        logger.log(
           "warn",
           `CONTRACT PING ERROR: cant find node ${contract.contractNodeId} for contract${contract.contractId}`
         );
@@ -50,7 +48,7 @@ class ContractManager {
       return sha1smallstr(contract.contractId);
     });
     if (pings.length > 0) {
-      this.logger.log("info", `PING CONTRACTS [${pings.join(", ")}]`);
+      logger.log("info", `PING CONTRACTS [${pings.join(", ")}]`);
     }
   };
 }

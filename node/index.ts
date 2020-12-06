@@ -13,7 +13,6 @@ import FileManager from "./fileManager";
 import ContractNegotiator from "./modules/contract/contractNegotiator";
 import ContractManager from "./contractManager";
 import Peer from "./peer";
-import logger from './util/logger';
 
 const localNodeId = Number(getRequiredEnvVar("LOCAL_NODE_ID"));
 
@@ -41,8 +40,6 @@ const nodeId = getClientHash();
 
 const udpClient = new UdpClient(localClientConfig.port);
 
-const logWriter = logger(localNodeId.toString())
-
 const getNodeHandler = (): NodesHandler => {
   if (generalClientConfig.useTracker) {
     return new Tracker(nodeId, localClientConfig.port, localClientConfig.port - 1);
@@ -55,14 +52,14 @@ const getPeerNodeHandler = () => {
   //
   // Create peer node
   const createFirstPeerNode = (port: number) => {
-    const peer = new Peer(nodeId, "localhost", port, udpClient, logWriter);
+    const peer = new Peer(nodeId, "localhost", port, udpClient);
     const name = peer.getId();
     console.log("First node:", name);
     return peer;
   };
 
   const createPeerNode = (port: number, connectToHost: string, connectToPort: number) => {
-    const peer = new Peer(nodeId, "localhost", port, udpClient, logWriter);
+    const peer = new Peer(nodeId, "localhost", port, udpClient);
     const name = peer.getId();
     const joinMessage = `JOIN:${name}:${host}:${localClientConfig.port}`;
     peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost);
@@ -79,8 +76,8 @@ const getPeerNodeHandler = () => {
 };
 
 const nodeManager = getNodeHandler();
-const fm = new FileManager(nodeManager, localNodeId, logWriter);
-const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm, logWriter);
-const cm = new ContractManager(localNodeId, nodeManager, udpClient, nodeId, fm, logWriter);
+const fm = new FileManager(nodeManager, localNodeId);
+const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm);
+const cm = new ContractManager(localNodeId, nodeManager, udpClient, nodeId, fm);
 
-const ts = new TcpServer(localNodeId, localClientConfig.port - 1, host, fm, logWriter);
+const ts = new TcpServer(localNodeId, localClientConfig.port - 1, host, fm);

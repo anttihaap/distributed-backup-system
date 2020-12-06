@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import udp from './services/udp';
 import { NodesHandler, Node } from './types';
-import { Logger } from 'winston';
+import logger from './util/logger';
 
 class Peer implements NodesHandler {
   id: string;
@@ -13,9 +13,8 @@ class Peer implements NodesHandler {
 
   nodes: Node[];
   contractRequest: boolean;
-  logger: Logger;
-
-  constructor(id: string, ip: string, port: number, udpClient: udp, logger: Logger) {
+  
+  constructor(id: string, ip: string, port: number, udpClient: udp, ) {
     this.id = id;
     this.ip = ip;
     this.port = port;
@@ -24,8 +23,6 @@ class Peer implements NodesHandler {
     this.contractRequest = false;
 
     this.udpClient = udpClient;
-
-    this.logger = logger;
 
     // ping the whole nodeList with 10 sec intervals to keep node alive
     cron.schedule('*/10 * * * * *', () => {
@@ -55,7 +52,7 @@ class Peer implements NodesHandler {
         if (successorNode !== undefined) {
           const newSuccessor = `${successorNode.nodeId}:${successorNode.ip}:${successorNode.port}`
           this.addSuccessor(newSuccessor)
-          this.logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
+          logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
         }
       }
       // Update predecessor, if needed
@@ -73,7 +70,7 @@ class Peer implements NodesHandler {
         if (predecessorNode !== undefined) {
           const newPredecessor = `${predecessorNode.nodeId}:${predecessorNode.ip}:${predecessorNode.port}`
           this.addPredecessor(newPredecessor)
-          this.logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
+          logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
         }
       }
       // Special case: a new node with the highest value id has joined -> update node with the smallest value id
@@ -82,7 +79,7 @@ class Peer implements NodesHandler {
         if (predecessorNode !== undefined) {
         const newPredecessor = `${predecessorNode.nodeId}:${predecessorNode.ip}:${predecessorNode.port}`
         this.addPredecessor(newPredecessor)
-        this.logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
+        logger.info(`Nodelist updated, predecessor: ${this.predecessor}, successor: ${this.successor}`)
         }
       }
     })
@@ -136,7 +133,7 @@ class Peer implements NodesHandler {
       this.addNodeToNodeList(peerId, peerHost, peerPort, contractReq)
 
       this.udpClient.sendUdpMessage(`FIRST_ACK:${this.id}:${this.ip}:${this.port}`, peerPort, peerHost)
-      this.logger.info(`A new node joined node this node, new predecessor: ${this.predecessor}, new successor: ${this.successor}`)
+      logger.info(`A new node joined node this node, new predecessor: ${this.predecessor}, new successor: ${this.successor}`)
 
     } else {
 
@@ -172,7 +169,7 @@ class Peer implements NodesHandler {
       else {
         this.udpClient.sendUdpMessage(message, successorPort, successorIp)
       }
-      this.logger.info(`A new node joined this node, new predecessor: ${this.predecessor}, new successor: ${this.successor}`)
+      logger.info(`A new node joined this node, new predecessor: ${this.predecessor}, new successor: ${this.successor}`)
     }
   }
 
@@ -188,7 +185,7 @@ class Peer implements NodesHandler {
     this.addSuccessor(newPeer)
     this.addNodeToNodeList(peerId, peerHost, peerPort, contractReq)
 
-    this.logger.info(`Joined the network with id ${this.id}, predecessor: ${this.predecessor}, successor: ${this.successor}`)
+    logger.info(`Joined the network with id ${this.id}, predecessor: ${this.predecessor}, successor: ${this.successor}`)
   }
 
   handleAck(message: string) {
@@ -208,7 +205,7 @@ class Peer implements NodesHandler {
     const notifyPredecessorString = `NOTIFY:${this.id}:${this.ip}:${this.port}`
     this.udpClient.sendUdpMessage(notifyPredecessorString, predecessorPort, predecessorHost)
 
-    this.logger.info(`Joined the network with id ${this.id}, predecessor: ${this.predecessor}, successor: ${this.successor}`)
+    logger.info(`Joined the network with id ${this.id}, predecessor: ${this.predecessor}, successor: ${this.successor}`)
 
     const notifyAll = `NEW_NODE:${this.id}:${this.ip}:${this.port}`
     this.udpClient.sendUdpMessage(notifyAll, peerPort, peerHost)
@@ -225,7 +222,7 @@ class Peer implements NodesHandler {
     this.addSuccessor(newPeer)
     this.addNodeToNodeList(peerId, peerHost, peerPort, contractReq)
 
-    this.logger.info(`Received NOTIFY, updated successor. predecessor: ${this.predecessor}, successor: ${this.successor}`)
+    logger.info(`Received NOTIFY, updated successor. predecessor: ${this.predecessor}, successor: ${this.successor}`)
   }
 
   sendPing() {

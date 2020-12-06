@@ -18,6 +18,10 @@ interface LocalNodeConfig {
   connectionPeerPort?: number;
 }
 
+export const getLocalId = (): number => {
+  return localNodeId;
+}
+
 export const getGeneralConfig = () => {
   if (config.useTracker === undefined) {
     throw "Add useTracker to config";

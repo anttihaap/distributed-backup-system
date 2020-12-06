@@ -1,19 +1,17 @@
 import net from "net";
 import fs, { WriteStream } from "fs";
 import FileManager from "../fileManager";
-import { Logger } from "winston";
+import logger from "../util/logger";
 
 class TcpServer {
   id: number;
   server: net.Server;
   fm: FileManager;
-  logger: Logger;
 
-  constructor(id: number, tcpPort: number, host: string, fm: FileManager, logger: Logger) {
+  constructor(id: number, tcpPort: number, host: string, fm: FileManager) {
     this.id = id;
     this.server = net.createServer();
     this.fm = fm;
-    this.logger = logger;
 
     this.server.listen(tcpPort, host, () => {
       console.log("TCP server started");
@@ -47,11 +45,11 @@ class TcpServer {
 
       socket.on("end", () => {
         const contractId = Buffer.concat(receivedMetadata);
-        this.logger.log("info", `FILE RECEIVED for contract ${contractId}.`);
+        logger.log("info", `FILE RECEIVED for contract ${contractId}.`);
       });
 
       socket.on("error", (error) => {
-        this.logger.log("warn", `FILE RECEIVE FAILED - ${error}`);
+        logger.log("warn", `FILE RECEIVE FAILED - ${error}`);
       });
     });
   }
