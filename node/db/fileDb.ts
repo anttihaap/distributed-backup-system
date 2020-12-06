@@ -15,7 +15,7 @@ const amountOfContractsPerFile = getAmountOfContractsPerFile();
 const fileDb = new JsonDB(new Config("./files_db/fileDb_" + localNodeId, true, true, "/"));
 
 const readFileNames = async () => {
-  const dirPath = path.resolve("./files");
+  const dirPath = path.resolve(`./files/${localNodeId}`);
   const files = util.promisify(fs.readdir)(dirPath);
   return files;
 };
