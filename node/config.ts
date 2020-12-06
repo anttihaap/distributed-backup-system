@@ -22,6 +22,13 @@ export const getLocalId = (): number => {
   return localNodeId;
 }
 
+export const getAmountOfContractsPerFile = (): number => {
+  if (config.amountOfContractsPerFile === undefined) {
+    throw "Add amountOfContractsPerFile to config";
+  }
+  return config.amountOfContractsPerFile;
+}
+
 export const getGeneralConfig = () => {
   if (config.useTracker === undefined) {
     throw "Add useTracker to config";
@@ -30,7 +37,6 @@ export const getGeneralConfig = () => {
 };
 
 export const getLocalNodeConfig = () => {
-  console.log(config);
   if (config.localNodes === undefined) {
     throw "Add localNodes to config";
   }

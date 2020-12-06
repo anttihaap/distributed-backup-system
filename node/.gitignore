@@ -3,6 +3,6 @@ build/
 files/
 contractDb.json
 fileDb.json
-db/
+files_db/
 files_contract/
 logs/

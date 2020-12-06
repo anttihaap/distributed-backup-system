@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import { getRequiredEnvVar, getOptionalEnvVar } from "./util/env";
-import { getLocalNodeConfig, getGeneralConfig } from "./config";
+import { getLocalNodeConfig, getGeneralConfig, getLocalId } from "./config";
 
 import { NodesHandler } from "./types";
 
@@ -14,18 +14,16 @@ import ContractNegotiator from "./modules/contract/contractNegotiator";
 import ContractManager from "./contractManager";
 import Peer from "./peer";
 
-const localNodeId = Number(getRequiredEnvVar("LOCAL_NODE_ID"));
-
 // TODO: lets use this for now?
 const host = "localhost";
 
 const generalClientConfig = getGeneralConfig();
 const localClientConfig = getLocalNodeConfig();
-const localClientNodeIdDb = new JsonDB(new Config("./db/localClientNodeIdDb" + localNodeId, true, true, "/"));
+const localClientNodeIdDb = new JsonDB(new Config("./files_db/localClientNodeIdDb" + getLocalId(), true, true, "/"));
 
 const getClientHash = (): string => {
   try {
-    const id = localClientNodeIdDb.getData("/" + localNodeId);
+    const id = localClientNodeIdDb.getData("/" + getLocalId());
     console.log(`Using saved node id: ${id}`);
     return id;
   } catch (err) {
@@ -76,8 +74,8 @@ const getPeerNodeHandler = () => {
 };
 
 const nodeManager = getNodeHandler();
-const fm = new FileManager(nodeManager, localNodeId);
-const cn = new ContractNegotiator(nodeManager, udpClient, nodeId, fm);
-const cm = new ContractManager(localNodeId, nodeManager, udpClient, nodeId, fm);
+const fm = new FileManager(nodeManager);
+const cn = new ContractNegotiator(nodeManager, udpClient, nodeId);
+const cm = new ContractManager(nodeManager, udpClient, nodeId);
 
-const ts = new TcpServer(localNodeId, localClientConfig.port - 1, host, fm);
+const ts = new TcpServer(localClientConfig.port - 1, host);

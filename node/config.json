@@ -1,5 +1,6 @@
 {
   "useTracker": false,
+  "amountOfContractsPerFile": 2,
   "localNodes": [
     {
       "id": 1,

@@ -1,25 +1,25 @@
 import { ContractCandidate, NodesHandler } from "../../types";
 import cron from "node-cron";
 import udp from "../../services/udp";
-import FileManager from "../../fileManager";
 import { sha1smallstr, getRandomSha1 } from "../../util/hash";
-import logger from "../../util/logger"
+
+import { addContract } from "../../db/contractDb";
+import { getAmountOfContractsWanted } from "../../db/fileDb";
+import logger from "../../util/logger";
 
 /**
  * Negotiates contracts for files that don't have any contracts.
  */
 class ContractNegotiator {
   nodeHandler: NodesHandler;
-  fm: FileManager;
   udpClient: udp;
   id: string;
 
   contractCandidates: Array<ContractCandidate>;
 
-  constructor(nodeHandler: NodesHandler, udpClient: udp, id: string, fm: FileManager) {
+  constructor(nodeHandler: NodesHandler, udpClient: udp, id: string) {
     this.nodeHandler = nodeHandler;
     this.id = id;
-    this.fm = fm;
     this.udpClient = udpClient;
 
     this.contractCandidates = [];
@@ -74,9 +74,9 @@ class ContractNegotiator {
   };
 
   private enoughCandidates = () => {
-    const filesWithoutContracts = this.fm.getFilesWithoutContract();
-    if (filesWithoutContracts.length === 0) return true;
-    return this.contractsWithAck().length >= filesWithoutContracts.length;
+    const amountOfContractsNeeded = getAmountOfContractsWanted();
+    if (amountOfContractsNeeded === 0) return true;
+    return this.contractsWithAck().length >= amountOfContractsNeeded;
   };
 
   private onContractPing = async ([data1, data2]: string[]) => {
@@ -98,13 +98,13 @@ class ContractNegotiator {
 
     if (contract.pingCount + 1 >= 3 && this.enoughCandidates()) {
       const sortedByPingCount = [...this.contractCandidates].sort((a, b) => b.pingCount - a.pingCount);
-      this.contractCandidates = sortedByPingCount.slice(0, this.fm.getFilesWithoutContract().length);
+      this.contractCandidates = sortedByPingCount.slice(0, getAmountOfContractsWanted());
     }
 
     if (contract.pingCount + 1 >= 10) {
       logger.log("info", `CONTRACT NEGOTIATION SUCCESSFULL - Add contract ${sha1smallstr(contract.contractId)}`);
-      this.fm.addContract(contract, this.fm.getFilesWithoutContract()[0]);
-      this.contractCandidates = this.contractCandidates.filter((c) => c.contractId != contract.contractId);
+      addContract(contract);
+      this.contractCandidates = this.contractCandidates.filter((c) => c.contractId !== contract.contractId);
       return;
     }
 
@@ -205,6 +205,7 @@ class ContractNegotiator {
   private checkTTLCandidateContracts = async () => {
     this.contractCandidates = this.contractCandidates.reduce<Array<ContractCandidate>>((acc, curr) => {
       if (curr.creationTime + 30 * 1000 < new Date().getTime()) {
+        logger.log("warn", `CONTRACT CANDIDATE ${sha1smallstr(curr.contractId)} TTL expired. Removing.`)
         return acc;
       }
       return [...acc, curr];

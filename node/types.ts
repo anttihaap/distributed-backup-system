@@ -8,14 +8,16 @@ export interface Node {
 }
 
 export interface FileDbItem {
-  file: File;
-  contract: string | null;
+  fileName: string;
+  contracts: string[];
 }
 
 export interface File {
   name: string;
-  // Size in bytes
-  size: Number;
+}
+
+export interface FilesDb {
+  [fileName: string]: FileDbItem;
 }
 
 export interface ContractDb {
@@ -35,7 +37,7 @@ export interface ContractCandidate {
 export interface Contract {
   contractId: string;
   contractNodeId: string;
-  file: File;
+  fileName: string;
   fileSent: boolean;
   fileSendingInProgress: boolean;
 }

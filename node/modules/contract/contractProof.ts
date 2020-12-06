@@ -1,12 +1,12 @@
 import fs from "fs";
-import crypto from "crypto";
 import cron from "node-cron";
-import logger from "../../util/logger"
 
-import FileManager from "../../fileManager";
 import { NodesHandler } from "../../types";
 import Udp from "../../services/udp";
-import { sha1smallstr, checksumFile, checksumPartFile, getRandomInt } from "../../util/hash";
+import { sha1smallstr, checksumPartFile, getRandomInt } from "../../util/hash";
+import { getContract, getContracts, getReceivedContractFilePath } from "../../db/contractDb";
+import { getFilePath } from "../../db/fileDb";
+import logger from "../../util/logger";
 
 // Ask proof for 2 mins
 const TTLofProof = 2 * 60 * 1000;
@@ -20,24 +20,14 @@ interface ContractProof {
 }
 
 class ContractProofModule {
-  localNodeId: number;
-  fm: FileManager;
   nodeManager: NodesHandler;
   udpClient: Udp;
 
   proofRequestList: ContractProof[];
 
-  constructor(
-    localNodeId: number,
-    nodeManager: NodesHandler,
-    udpClient: Udp,
-    id: string,
-    fm: FileManager,
-  ) {
-    this.localNodeId = localNodeId;
+  constructor(nodeManager: NodesHandler, udpClient: Udp, id: string) {
     this.nodeManager = nodeManager;
     this.udpClient = udpClient;
-    this.fm = fm;
 
     this.proofRequestList = [];
     this.udpClient.on("CONTRACT_PROOF", this.handleContractProof);
@@ -50,8 +40,7 @@ class ContractProofModule {
   }
 
   private askForProof = async () => {
-    this.fm
-      .getContracts()
+    getContracts()
       .filter((contract) => contract.fileSent)
       .forEach(async (contract) => {
         const existingProof = this.proofRequestList.find((c) => c.contractId === contract.contractId);
@@ -80,7 +69,7 @@ class ContractProofModule {
             node.ip
           );
         } else {
-          const contractFilePath = this.fm.getFilePath(contract.file.name);
+          const contractFilePath = getFilePath(contract.fileName);
           const fileStats = fs.statSync(contractFilePath);
           const middlePoint = getRandomInt(fileStats.size);
           const { sha1start, sha1end } = await this.createHashesWithMiddlePoint(contractFilePath, middlePoint);
@@ -129,7 +118,7 @@ class ContractProofModule {
   };
 
   private handleContractProof = async ([contractId, middlepoint]: string[]) => {
-    const contract = this.fm.getContract(contractId);
+    const contract = getContract(contractId);
     if (!contract) {
       logger.log("warn", "CONTRACT_PROOF - No contract:", contractId);
       return;
@@ -142,7 +131,7 @@ class ContractProofModule {
       );
       return;
     }
-    const contractFilePath = this.fm.getReceivedContractFilePath(contract.contractId);
+    const contractFilePath = getReceivedContractFilePath(contract.contractId);
 
     const { sha1start, sha1end } = await this.createHashesWithMiddlePoint(contractFilePath, Number(middlepoint));
     logger.log(

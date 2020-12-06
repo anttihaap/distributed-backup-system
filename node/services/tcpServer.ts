@@ -1,17 +1,13 @@
 import net from "net";
 import fs, { WriteStream } from "fs";
-import FileManager from "../fileManager";
+import { getReceivedContractFilePath } from "../db/contractDb";
 import logger from "../util/logger";
 
 class TcpServer {
-  id: number;
   server: net.Server;
-  fm: FileManager;
 
-  constructor(id: number, tcpPort: number, host: string, fm: FileManager) {
-    this.id = id;
+  constructor(tcpPort: number, host: string) {
     this.server = net.createServer();
-    this.fm = fm;
 
     this.server.listen(tcpPort, host, () => {
       console.log("TCP server started");
@@ -35,7 +31,7 @@ class TcpServer {
           receivedType = true;
 
           const contractId = Buffer.concat(receivedMetadata).toString();
-          const filePath = fm.getReceivedContractFilePath(contractId);
+          const filePath = getReceivedContractFilePath(contractId);
           fileWriteStream = fs.createWriteStream(filePath);
           fileWriteStream.write(fileData);
         } else {
