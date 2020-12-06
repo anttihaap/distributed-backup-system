@@ -18,8 +18,8 @@ class FileManager {
 
   constructor(nodeHandler: NodesHandler, logger: Logger) {
     this.localNodeId = getLocalId();
-    this.fileDb = new JsonDB(new Config("./db/fileDb_" + this.localNodeId, true, true, "/"));
-    this.contractDb = new JsonDB(new Config("./db/contractDb_" + this.localNodeId, true, true, "/"));
+    this.fileDb = new JsonDB(new Config("./files_db/fileDb_" + this.localNodeId, true, true, "/"));
+    this.contractDb = new JsonDB(new Config("./files_db/contractDb_" + this.localNodeId, true, true, "/"));
     this.nodeHandler = nodeHandler;
     this.logger = logger;
 
