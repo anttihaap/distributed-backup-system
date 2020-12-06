@@ -4,13 +4,11 @@ import FileManager from "../fileManager";
 import { Logger } from "winston";
 
 class TcpServer {
-  id: number;
   server: net.Server;
   fm: FileManager;
   logger: Logger;
 
-  constructor(id: number, tcpPort: number, host: string, fm: FileManager, logger: Logger) {
-    this.id = id;
+  constructor(tcpPort: number, host: string, fm: FileManager, logger: Logger) {
     this.server = net.createServer();
     this.fm = fm;
     this.logger = logger;

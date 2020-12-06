@@ -16,7 +16,7 @@ class ContractManager {
   id: string;
   logger: Logger;
 
-  constructor(localNodeId: number, nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager, logger: Logger) {
+  constructor(nodeManager: NodesHandler, udp: udp, id: string, fm: FileManager, logger: Logger) {
     this.nodeHandler = nodeManager;
     this.udp = udp;
     this.fm = fm;
@@ -27,7 +27,7 @@ class ContractManager {
       this.pingContracts();
     });
 
-    const contractProof = new ContractProof(localNodeId, this.nodeHandler, this.udp, this.id, this.fm, this.logger);
+    const contractProof = new ContractProof(this.nodeHandler, this.udp, this.id, this.fm, this.logger);
     const contractFileSender = new ContractFileSender(this.nodeHandler, this.udp, this.id, this.fm, this.logger);
   }
 

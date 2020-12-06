@@ -20,7 +20,6 @@ interface ContractProof {
 }
 
 class ContractProofModule {
-  localNodeId: number;
   fm: FileManager;
   nodeManager: NodesHandler;
   udpClient: Udp;
@@ -29,14 +28,12 @@ class ContractProofModule {
   proofRequestList: ContractProof[];
 
   constructor(
-    localNodeId: number,
     nodeManager: NodesHandler,
     udpClient: Udp,
     id: string,
     fm: FileManager,
     logger: Logger
   ) {
-    this.localNodeId = localNodeId;
     this.nodeManager = nodeManager;
     this.udpClient = udpClient;
     this.fm = fm;
