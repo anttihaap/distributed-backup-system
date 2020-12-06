@@ -9,11 +9,15 @@ export interface Node {
 
 export interface FileDbItem {
   fileName: string;
-  contract: string | null;
+  contracts: string[];
 }
 
 export interface File {
   name: string;
+}
+
+export interface FilesDb {
+  [fileName: string]: FileDbItem;
 }
 
 export interface ContractDb {

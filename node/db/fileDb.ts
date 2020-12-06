@@ -4,10 +4,13 @@ import path from "path";
 import fs from "fs";
 import util from "util";
 
-import { File, FileDbItem } from "../types";
+import { File, FileDbItem, FilesDb } from "../types";
 
-import { getLocalId } from "../config";
+import { getLocalId, getAmountOfContractsPerFile } from "../config";
+import logger from "../util/logger";
 const localNodeId = getLocalId();
+
+const amountOfContractsPerFile = getAmountOfContractsPerFile();
 
 const fileDb = new JsonDB(new Config("./files_db/fileDb_" + localNodeId, true, true, "/"));
 
@@ -24,14 +27,25 @@ export const fileSize = (fileName: string): number => {
 
 export const getFileNames = async () => {
   return await readFileNames();
-}
+};
+
+export const getFileNameContractCount = (fileName: string) => {
+  try {
+    const file = fileDb.getData("/" + fileName) as FileDbItem;
+    return file.contracts.length;
+  } catch (_) {
+    logger.log("error", "File does not exist");
+    throw "File does not exist";
+  }
+};
 
 export const getFilePath = (fileName: string) => {
   return path.resolve("./files/" + fileName);
 };
 
 export const addContractForFile = (fileName: string, contractId: string) => {
-  fileDb.push("/" + fileName + "/contract", contractId);
+  const data = fileDb.getData("/" + fileName) as FileDbItem;
+  fileDb.push("/" + fileName, { ...data, contracts: [...data.contracts, contractId] });
 };
 
 export const fileExistsInDb = (fileName: string): boolean => {
@@ -46,21 +60,17 @@ export const fileExistsInDb = (fileName: string): boolean => {
 export const addFileWithoutContract = (fileName: string, size: number) => {
   fileDb.push("/" + fileName, {
     fileName: fileName,
-    contract: null,
-  } as FileDbItem)
-}
+    contracts: [],
+  } as FileDbItem);
+};
 
-export const getFileNamesWithoutContract = (): string[] => {
-  const files = [];
-  for (const [_, value] of Object.entries(fileDb.getData("/"))) {
-    const { fileName, contract } = value as FileDbItem;
-    if (!contract) {
-      files.push(fileName);
-    }
-  }
-  return files;
+export const getAmountOfContractsWanted = (): number => {
+  const test = fileDb.getData("/") as FilesDb;
+  return Object.entries(test).reduce<number>((acc, [currKey, currFile]) => {
+    return acc + (amountOfContractsPerFile - currFile.contracts.length);
+  }, 0);
 };
 
 export const existsFilesWithoutContract = (): boolean => {
-  return getFileNamesWithoutContract().length > 0;
+  return getAmountOfContractsWanted() > 0;
 };

@@ -4,7 +4,7 @@ import udp from "../../services/udp";
 import { sha1smallstr, getRandomSha1 } from "../../util/hash";
 
 import { addContract } from "../../db/contractDb";
-import { getFileNamesWithoutContract } from "../../db/fileDb";
+import { getAmountOfContractsWanted } from "../../db/fileDb";
 import logger from "../../util/logger";
 
 /**
@@ -74,9 +74,9 @@ class ContractNegotiator {
   };
 
   private enoughCandidates = () => {
-    const filesWithoutContracts = getFileNamesWithoutContract();
-    if (filesWithoutContracts.length === 0) return true;
-    return this.contractsWithAck().length >= filesWithoutContracts.length;
+    const amountOfContractsNeeded = getAmountOfContractsWanted();
+    if (amountOfContractsNeeded === 0) return true;
+    return this.contractsWithAck().length >= amountOfContractsNeeded;
   };
 
   private onContractPing = async ([data1, data2]: string[]) => {
@@ -98,13 +98,14 @@ class ContractNegotiator {
 
     if (contract.pingCount + 1 >= 3 && this.enoughCandidates()) {
       const sortedByPingCount = [...this.contractCandidates].sort((a, b) => b.pingCount - a.pingCount);
-      this.contractCandidates = sortedByPingCount.slice(0, getFileNamesWithoutContract().length);
+      this.contractCandidates = sortedByPingCount.slice(0, getAmountOfContractsWanted());
     }
 
     if (contract.pingCount + 1 >= 10) {
       logger.log("info", `CONTRACT NEGOTIATION SUCCESSFULL - Add contract ${sha1smallstr(contract.contractId)}`);
-      addContract(contract, getFileNamesWithoutContract()[0]);
-      this.contractCandidates = this.contractCandidates.filter((c) => c.contractId != contract.contractId);
+      addContract(contract);
+      this.contractCandidates = this.contractCandidates.filter((c) => c.contractId !== contract.contractId);
+      console.log(this.contractCandidates)
       return;
     }
 
@@ -205,6 +206,7 @@ class ContractNegotiator {
   private checkTTLCandidateContracts = async () => {
     this.contractCandidates = this.contractCandidates.reduce<Array<ContractCandidate>>((acc, curr) => {
       if (curr.creationTime + 30 * 1000 < new Date().getTime()) {
+        logger.log("info", `CONTRACT CANDIDATE ${sha1smallstr(curr.contractId)} TTL expired. Removing.`)
         return acc;
       }
       return [...acc, curr];

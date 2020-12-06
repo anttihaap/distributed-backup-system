@@ -1,10 +1,11 @@
 import cron from "node-cron";
 import { Logger } from "winston";
-import { getFileNamesWithoutContract, getFileNames, fileExistsInDb, fileSize, addFileWithoutContract } from "./db/fileDb"
+import { getAmountOfContractsWanted, getFileNames, fileExistsInDb, fileSize, addFileWithoutContract } from "./db/fileDb"
 
 import { NodesHandler } from "./types";
 
 import logger from "./util/logger";
+import { getAmountOfContractsPerFile } from "./config";
 
 class FileManager {
   nodeHandler: NodesHandler;
@@ -28,10 +29,10 @@ class FileManager {
         addFileWithoutContract(fileName, fileSize(fileName))
       }
     });
-    const shouldContactRequest = getFileNamesWithoutContract().length > 0;
+    const shouldContactRequest = getAmountOfContractsWanted() > 0;
     if (this.nodeHandler.getRequestingContracts() !== shouldContactRequest) {
-      this.logger.log("info", "SET is requesting contracts:", shouldContactRequest);
-      this.nodeHandler.setRequestingContracts(getFileNamesWithoutContract().length > 0);
+      this.logger.log("info", `SET is requesting contracts: ${shouldContactRequest}`);
+      this.nodeHandler.setRequestingContracts(getAmountOfContractsWanted() > 0);
     }
   };
 }
