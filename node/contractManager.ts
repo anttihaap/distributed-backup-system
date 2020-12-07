@@ -56,7 +56,7 @@ class ContractManager {
     }
 
     updateContractLastPing(contractId);
-    logger.log("info", `CONTRACT PING - Received for ${sha1smallstr(contractId)}. Pings: ${"TODO"}`);
+    logger.log("info", `CONTRACT PING - Received for ${sha1smallstr(contractId)}.`);
   };
 
   private pingContracts = async () => {
