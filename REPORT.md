@@ -1,5 +1,7 @@
 # Distributed File Backup System
 
+Checkout [README.md](https://github.com/anttihaap/distributed-backup-system/blob/main/README.md) for technical manual.
+
 ## Project goals and core functionality
 
 The goal of this system is to provide a peer-to-peer network for distributed file backup. A peer that provides storage for other nodes can use other available node's storage but a peer that will not provide storage for others cannot backup its files to other nodes. A file can be backed up on one to n nodes. A node can propose a contract for storage for other nodes. Nodes that accept the proposal will sign the contract and the file transfer will begin.
