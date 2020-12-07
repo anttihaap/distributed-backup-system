@@ -33,10 +33,12 @@ The messaging between the nodes (e.g. proposing a contract for nodes in the netw
 
 In order to join the network, the address and port of some node already in the network has to be known. The network uses a messaging protocol with the following message strings:
 
-    JOIN:nodeId:host:port                               The joining node (nodeId) sends JOIN to a node that it knows in the network.
-    ACK_JOIN:nodeId:host:port:predId:predHost:predPort  A node that accepts JOIN (nodeId) sends ACK_JOIN to the joining node
-    NOTIFY:nodeId:host:port                             The joining node (nodeId) sends NOTIFY to its new predecessor
-    NEW_NODE:nodeId:host:port                           This message will be passed around the ring after the new node (nodeId) has joined
+| Command | Description |
+| --- | --- |
+|    JOIN:nodeId:host:port                               | The joining node (nodeId) sends JOIN to a node that it knows in the network. |
+|    ACK_JOIN:nodeId:host:port:predId:predHost:predPort  | A node that accepts JOIN (nodeId) sends ACK_JOIN to the joining node |
+|    NOTIFY:nodeId:host:port                             | The joining node (nodeId) sends NOTIFY to its new predecessor |
+|    NEW_NODE:nodeId:host:port                           | This message will be passed around the ring after the new node (nodeId) has joined |
 
 When a node wants to join the network it sends a JOIN message to a node that it knows in the network. The JOIN message is passed clockwise in the network from smaller nodeId value to greater until the right place is found. The node that will be the successor to the new node sends an ACK_JOIN to the joining node with information about its current predecessor. It also updates the new node to its predecessor.    
 
