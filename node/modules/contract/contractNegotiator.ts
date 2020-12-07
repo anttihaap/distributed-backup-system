@@ -26,7 +26,6 @@ class ContractNegotiator {
 
     this.udpClient.on("CONTRACT_CREATE", this.onContractCreate);
     this.udpClient.on("CONTRACT_CREATE_ACK", this.onContractCreateAck);
-    this.udpClient.on("CONTRACT_PING", this.onContractPing);
 
     this.sendContactCreateRequests();
     cron.schedule("*/20 * * * * *", async () => {
@@ -79,14 +78,7 @@ class ContractNegotiator {
     return this.contractsWithAck().length >= amountOfContractsNeeded;
   };
 
-  private onContractPing = async ([data1, data2]: string[]) => {
-    const nodeId = data2;
-    const contractId = data1;
-    if (nodeId !== this.id) {
-      logger.log("warn", `CONTRACT_PING - Wrong node id in contract`);
-      return;
-    }
-
+  onCandidatePing = async ([contractId, nodeId]: string[]) => {
     const contract = this.contractCandidates.find(
       (contract) => contract.contractId === contractId && !contract.waitingAck
     );
@@ -117,7 +109,7 @@ class ContractNegotiator {
 
     logger.log(
       "info",
-      `CONTRACT_PING - Received for ${sha1smallstr(contractId)}. Pings: ${contract.pingCount + 1}`
+      `CONTRACT CONDIDATE PING - Received for ${sha1smallstr(contractId)}. Pings: ${contract.pingCount + 1}`
     );
   };
 
@@ -165,7 +157,7 @@ class ContractNegotiator {
       return;
     }
 
-    console.log(`CONTRACT_CREATE received - Respond with ACK. Start pinging contract ${sha1smallstr(contractId)}`);
+    logger.log("info", `CONTRACT_CREATE received - Respond with ACK. Start pinging contract ${sha1smallstr(contractId)}`);
 
     const nodeAddress = info.address;
     const nodePort = info.port;
@@ -225,7 +217,7 @@ class ContractNegotiator {
       return [...acc, sha1smallstr(contract.contractId)];
     }, []);
     if (pings.length > 0) {
-      logger.log("warn", `CONTRACT_PINGS sent for [${pings.join(", ")}]`);
+      logger.log("info", `CONTRACT_PINGS sent for [${pings.join(", ")}]`);
     }
   };
 }

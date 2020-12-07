@@ -5,7 +5,13 @@ import path from "path";
 
 import { Contract, ContractCandidate, File, ContractDb } from "../types";
 
-import { getFileNames, addContractForFile, fileExistsInDb, getFileNameContractCount } from "./fileDb";
+import {
+  getFileNames,
+  addContractForFile,
+  fileExistsInDb,
+  getFileNameContractCount,
+  removeContractFromFile,
+} from "./fileDb";
 
 import logger from "../util/logger";
 
@@ -32,7 +38,7 @@ export const getReceivedContractFilePath = (contractId: string) => {
 };
 
 export const addContract = async (contractCandidate: ContractCandidate) => {
-  const fileName = await fileNameWithLeastContracts()
+  const fileName = await fileNameWithLeastContracts();
   const fileFound = fileExistsInDb(fileName);
   if (!fileFound) {
     logger.log(
@@ -47,10 +53,19 @@ export const addContract = async (contractCandidate: ContractCandidate) => {
     fileSent: false,
     contractId: contractCandidate.contractId,
     contractNodeId: contractCandidate.contractNodeId,
+    waitingNodeRecovery: false,
+    creationTime: new Date().getTime(),
   } as Contract;
   contractDb.push("/" + contract.contractId, contract);
 
   addContractForFile(fileName, contract.contractId);
+};
+
+export const removeContract = async (contractId: string) => {
+  const contract = contractDb.getData("/" + contractId) as Contract;
+  console.log('delete contractId:', contractId)
+  contractDb.delete("/" + contractId);
+  removeContractFromFile(contractId, contract.fileName);
 };
 
 export const setContractFileSent = (contractId: string) => {
@@ -79,4 +94,29 @@ export const getContract = (contractId: string): Contract | undefined => {
 export const getContracts = (): Contract[] => {
   const contractDbData = contractDb.getData("/") as ContractDb;
   return Object.entries(contractDbData).reduce<Contract[]>((acc, [_, contract]) => [...acc, contract], []);
+};
+
+export const updateContractLastPing = (contractId: string) => {
+  try {
+    const contract = contractDb.getData("/" + contractId) as Contract;
+    contractDb.push("/" + contractId, {
+      ...contract,
+      lastPingTime: new Date().getTime(),
+    } as Contract);
+  } catch (_) {
+    logger.log("error", `UPDATE CONTRACT LAST PING - ERROR for ${contractId}`);
+  }
+};
+
+export const setContractWaitingRecovery = (contractId: string, value: boolean) => {
+  try {
+    const contract = contractDb.getData("/" + contractId) as Contract;
+    contractDb.push("/" + contractId, {
+      ...contract,
+      waitingNodeRecovery: value,
+      waitingNodeRecoveryStartTime: new Date().getTime(),
+    } as Contract);
+  } catch (_) {
+    logger.log("error", `SET CONTRACT WAITING RECOVERY - ERROR for ${contractId}`);
+  }
 };

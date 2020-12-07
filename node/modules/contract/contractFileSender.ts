@@ -5,10 +5,11 @@ import Udp from "../../services/udp";
 import { sendFile } from "../../services/tcpClient";
 import { sha1smallstr } from "../../util/hash";
 
-import { getContracts, setContractFileSent } from "../../db/contractDb";
+import { getContracts, setContractFileSent, removeContract } from "../../db/contractDb";
 import { getFilePath } from "../../db/fileDb";
 
 import logger from "../../util/logger";
+import { checkServerIdentity } from "tls";
 
 interface ContractFileSentList {
   contractId: string;
@@ -34,21 +35,20 @@ class ContractFileSender {
   }
 
   private checkContractsWithoutFileSent = async () => {
-    const contractsWithoutFileSent = getContracts().filter(
-      (contract) => !contract.fileSent && !contract.fileSendingInProgress
-    );
+    const contractsWithoutFileSent = getContracts().filter((contract) => !contract.fileSent);
     if (contractsWithoutFileSent.length === 0) return;
 
     contractsWithoutFileSent.forEach((contract) => {
       const contractNode = this.nodesHandler.getNode(contract.contractNodeId);
       if (!contractNode) {
-        // TODO!!!!
         logger.log(
           "warn",
-          `CONTRACT PROOF - Can't send proof. Can't find node ${contract.contractNodeId} for contract ${sha1smallstr(
-            contract.contractId
-          )}`
+          `CONTRACT FILE SENT - Error for ${sha1smallstr(contract.contractId)} - Can't find node ${
+            contract.contractNodeId
+          } for contract
+          `
         );
+        this.addFailureForContract(contract.contractId);
         return;
       }
       sendFile(
@@ -68,14 +68,18 @@ class ContractFileSender {
   };
 
   private onFileSentError = (contractId: string, err: Error) => {
-    logger.log("warn", `CONTRACT FILE SEND - ERROR for ${sha1smallstr(contractId)} - Error: ${err}`);
+    logger.log("warn", `CONTRACT FILE SEND ERROR: for ${sha1smallstr(contractId)} - Error: ${err}`);
+    this.addFailureForContract(contractId);
+  };
+
+  private addFailureForContract = (contractId: string) => {
     const failures = this.contractFailures.find((c) => c.contractId === contractId);
     if (!failures) {
       this.contractFailures = [...this.contractFailures, { contractId, sentFailCount: 1 }];
     } else {
       this.contractFailures = this.contractFailures.map((c) => {
         if (c.contractId === contractId) {
-          return failures;
+          return { ...failures, sentFailCount: failures.sentFailCount + 1 };
         }
         return c;
       });
@@ -85,13 +89,17 @@ class ContractFileSender {
   private checkFailedAttempts = () => {
     const contractsWithTooManyfailures = this.contractFailures.reduce<string[]>((acc, cf) => {
       if (cf.sentFailCount >= 3) {
+        removeContract(cf.contractId);
+        this.contractFailures = this.contractFailures.filter((contract) => contract.contractId === cf.contractId);
         return [...acc, cf.contractId];
       }
       return acc;
     }, []);
     // Too many failures!!!
     if (contractsWithTooManyfailures.length > 1) {
-      logger.log("warn", "TOO MANY FAILURES FOR SENDING FILE. TODO SOMETHING.");
+      contractsWithTooManyfailures.forEach((contractId) => {
+        logger.log("error", `REMOVE CONTRACT ${sha1smallstr(contractId)} - Reason: 3 failures to send file.`);
+      });
     }
   };
 }

@@ -4,12 +4,12 @@ import cron from "node-cron";
 import { NodesHandler } from "../../types";
 import Udp from "../../services/udp";
 import { sha1smallstr, checksumPartFile, getRandomInt } from "../../util/hash";
-import { getContract, getContracts, getReceivedContractFilePath } from "../../db/contractDb";
+import { getContract, getContracts, getReceivedContractFilePath, removeContract } from "../../db/contractDb";
 import { getFilePath } from "../../db/fileDb";
 import logger from "../../util/logger";
 
-// Ask proof for 2 mins
-const TTLofProof = 2 * 60 * 1000;
+// Ask proof for 3 mins
+const TTLofProof = 3 * 60 * 1000;
 
 interface ContractProof {
   contractId: string;
@@ -35,13 +35,30 @@ class ContractProofModule {
 
     cron.schedule("*/20 * * * * *", async () => {
       this.askForProof();
+      this.clearProofsForWaitingRecovery();
       this.checkTTLofProofs();
     });
   }
 
+  private clearProofsForWaitingRecovery = () => {
+    getContracts()
+      .filter((c) => c.waitingNodeRecovery)
+      .forEach((c) => {
+        const proofContract = this.proofRequestList.find((p) => p.contractId === c.contractId);
+        if (proofContract) {
+          logger.log(
+            "warn",
+            `CONTRACT PROOF - Stop asking proofs for ${sha1smallstr(c.contractId)}. Is in recovery mode.`
+          );
+        }
+        this.proofRequestList = this.proofRequestList.filter((p) => p.contractId !== c.contractId);
+      });
+  };
+
   private askForProof = async () => {
     getContracts()
       .filter((contract) => contract.fileSent)
+      .filter((contract) => !contract.waitingNodeRecovery)
       .forEach(async (contract) => {
         const existingProof = this.proofRequestList.find((c) => c.contractId === contract.contractId);
         const node = this.nodeManager.getNodes().find((n) => n.nodeId === contract.contractNodeId);
@@ -108,11 +125,9 @@ class ContractProofModule {
   private checkTTLofProofs = async () => {
     this.proofRequestList.forEach((proofReq) => {
       if (proofReq.creationUnixTime + TTLofProof < new Date().getTime()) {
-        logger.log(
-          "warn",
-          `CONTRACT PROOF not received in time for contract ${sha1smallstr(proofReq.contractId)}`
-        );
-        this.proofRequestList = this.proofRequestList.filter((proof) => proof.contractId === proofReq.contractId);
+        logger.log("error", `CONTRACT PROOF not received. Delete contract ${sha1smallstr(proofReq.contractId)}`);
+        this.proofRequestList = this.proofRequestList.filter((proof) => proof.contractId !== proofReq.contractId);
+        removeContract(proofReq.contractId);
       }
     });
   };
@@ -133,21 +148,25 @@ class ContractProofModule {
     }
     const contractFilePath = getReceivedContractFilePath(contract.contractId);
 
-    const { sha1start, sha1end } = await this.createHashesWithMiddlePoint(contractFilePath, Number(middlepoint));
-    logger.log(
-      "info",
-      `CONTRACT_PROOF - RECEIVED for ${sha1smallstr(
-        contract.contractId
-      )} with middlepoint ${middlepoint}. Answering sha1start ${sha1smallstr(sha1start)}, sha1end ${sha1smallstr(
-        sha1end
-      )}`
-    );
+    try {
+      const { sha1start, sha1end } = await this.createHashesWithMiddlePoint(contractFilePath, Number(middlepoint));
+      logger.log(
+        "info",
+        `CONTRACT_PROOF - RECEIVED for ${sha1smallstr(
+          contract.contractId
+        )} with middlepoint ${middlepoint}. Answering sha1start ${sha1smallstr(sha1start)}, sha1end ${sha1smallstr(
+          sha1end
+        )}`
+      );
 
-    this.udpClient.sendUdpMessage(
-      `CONTRACT_PROOF_ACK:${contract.contractId}:${middlepoint}:${sha1start}:${sha1end}`,
-      Number(node.port),
-      node.ip
-    );
+      this.udpClient.sendUdpMessage(
+        `CONTRACT_PROOF_ACK:${contract.contractId}:${middlepoint}:${sha1start}:${sha1end}`,
+        Number(node.port),
+        node.ip
+      );
+    } catch (_) {
+      logger.log("error", `CONTRACT PROOF - ERROR - Can't answer proof. Corrupt data?`)
+    }
   };
 
   private handleContractProofAck = ([contractId, middlePointForSha1, sha1Start, sha1End]: string[]) => {
