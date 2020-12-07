@@ -24,7 +24,7 @@
       "id": 4,
       "port": 4444,
       "connectionPeerHost": "localhost",
-      "connectPeerPort": "9999"
+      "connectionPeerPort": "9999"
     },
     {
       "id": 5,
