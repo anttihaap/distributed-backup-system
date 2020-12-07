@@ -10,7 +10,6 @@ import Tracker from "./services/tracker";
 import UdpClient from "./services/udp";
 import TcpServer from "./services/tcpServer";
 import FileManager from "./fileManager";
-import ContractNegotiator from "./modules/contract/contractNegotiator";
 import ContractManager from "./contractManager";
 import Peer from "./peer";
 
@@ -75,7 +74,6 @@ const getPeerNodeHandler = () => {
 
 const nodeManager = getNodeHandler();
 const fm = new FileManager(nodeManager);
-const cn = new ContractNegotiator(nodeManager, udpClient, nodeId);
 const cm = new ContractManager(nodeManager, udpClient, nodeId);
 
 const ts = new TcpServer(localClientConfig.port - 1, host);

@@ -39,6 +39,10 @@ export interface Contract {
   contractNodeId: string;
   fileName: string;
   fileSent: boolean;
+  creationTime: number;
+  lastPingTime: number;
+  waitingNodeRecovery: boolean;
+  waitingNodeRecoveryStartTime?: number;
 }
 
 export interface NodesHandler {

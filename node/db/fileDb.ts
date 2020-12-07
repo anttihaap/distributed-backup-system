@@ -14,6 +14,10 @@ const amountOfContractsPerFile = getAmountOfContractsPerFile();
 
 const fileDb = new JsonDB(new Config("./files_db/fileDb_" + localNodeId, true, true, "/"));
 
+export const getFilePath = (fileName: string) => {
+  return path.resolve(`./files/${localNodeId}/${fileName}`);
+};
+
 const readFileNames = async () => {
   const dirPath = path.resolve(`./files/${localNodeId}`);
   const files = util.promisify(fs.readdir)(dirPath);
@@ -21,7 +25,7 @@ const readFileNames = async () => {
 };
 
 export const fileSize = (fileName: string): number => {
-  const filePath = path.resolve("./files/" + fileName);
+  const filePath = getFilePath(fileName)
   return fs.statSync(filePath).size;
 };
 
@@ -45,9 +49,6 @@ export const getFileNameContractCount = (fileName: string) => {
   }
 };
 
-export const getFilePath = (fileName: string) => {
-  return path.resolve("./files/" + fileName);
-};
 
 export const addContractForFile = (fileName: string, contractId: string) => {
   const data = fileDb.getData("/" + fileName) as FileDbItem;
