@@ -18,7 +18,7 @@ will start four nodes and form a ring overlay network.
 
 ## File backups
 
-Moving or copying a file to the *files/* folder in the root (*node/*) will automatically start the backup process. The `amountOfContractsPerFile` variable in *config.json* defines the number of contracts (backup copies). It is set by default to 2.
+Moving or copying a file to node specific *files/<local_node_id>* folder in the root (*node/*) will automatically start the backup process. The `amountOfContractsPerFile` variable in *config.json* defines the number of contracts (backup copies). It is set by default to 2.
 
 ## Running with a tracker server (optional)
 
