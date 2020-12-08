@@ -169,9 +169,15 @@ Free riding in p2p is an important topic in p2p networks. There needs to become 
 
 The network is very scalable and our hashing and naming protocol will in theory enable 2<sup>32</sup> nodes to join the network. In practice, hash collisions would probably happen (see suggested solution in "Naming and node id" improvements section). Joining the network will happen in O(n) time, as the NEW_NODE message will go around the whole circle to notify other nodes. The PING messages to keep the nodes timestamp fresh will currently be sent to all nodes in the network. This will result in n<sup>2</sup> messages in the network sent every ten seconds. This will not be a problem in the smaller networks tested for this project but for networks with perhaps thousands of nodes, a more efficient way of messaging should be implemented. For instance, a node list could be restricted to only hold 10 nearest successors and the nodes with backup files.
 
+In theory, the system scales well as the JOIN and the NEW_NODE functions are of O(n) time and ACK_JOIN, NOTIFY functions are of O(1). However, as the number of nodes (n) becomes large, the number of backup process UDP messages and the keep-alive PING messages should be limited to an acceptable size. 
+
 The backup process uses UDP packets for end to end communication. It can scale among the peer network. On very large networks, some limitations should be in place: the node shouldn't try to negotiate with all the nodes.
 
 Nodes are selected by random to create contracts among others. There could be in place a mechanism to select optimal nodes for contracts. Nodes would like to select the best and the closest node for fast file transfers and synchronization.
+
+### Testing
+
+We tested the system with 2 to 6 nodes without any problems or decrease in performance. In the demo the peer network is shown with four nodes. For clarity and understandability, the backup system was demonstrated with only two nodes.
 
 ## Functionalities 
 
@@ -250,5 +256,3 @@ Design and planning of the system components, demo and documentation done as a j
 
 Antti Haapaniemi: Tracker, contract management, file management, file transfer    
 Saara Koskipää: Node network, UDP client, logging
-
-
