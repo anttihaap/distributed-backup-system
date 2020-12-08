@@ -80,7 +80,7 @@ Module: `node/modules/contract/contractNegotiator.ts`
 | CONTRACT_CREATE_ACK:contractId:contractNodeId:contractId | Message acknowledging to create a contract |
 | CONTRACT_PING:contractId:contractNodeId | Ping contract. | 
 
-Nodes that want to backup a file send `CONTRACT_CREATE` requests to it's peers in the network which also want to backup a file. The network (peer network or tracker) includes in the node updates a flag indicating if a node wants create backups or not. A node acknowledges a `CONTRACT_CREATE` request with a `CONTRACT_CREATE_ACK` request. After this both nodes start piging the contract. The contract is called at this stage a *contract candidate*.
+Nodes that want to backup a file send `CONTRACT_CREATE` requests to it's peers in the network which also want to backup a file. The network (peer network or tracker) includes in the node updates a flag indicating if a node wants create backups or not. A node acknowledges a `CONTRACT_CREATE` request with a `CONTRACT_CREATE_ACK` request. After this both nodes start pinging the contract. The contract is called at this stage a *contract candidate*.
 
 We use a competition strategy to cherry-pick contract candidates. Node's 
 
@@ -94,11 +94,11 @@ Modules: `node/modules/contract/contractFileSender.ts` and `node/services/tcpSer
 
 Nodes listen to a TCP which is one number lower than the UDP port. We took this approach as a convenience (see improvements section TODO!).
 
-Node's will periotically attempt to send the file for the contract. If the file is not sent successfully in about 3mins, the contract will be deleted. In practice this means that the node should negitiate a contract again.
+Node's will periotically attempt to send the file for the contract. If the file is not sent successfully in about 3mins, the contract will be deleted. In practice this means that the node should negotiate a contract again.
 
 #### Failure and recovery
 
-Recovery can happen in the 3min window. File transfer is an crusial stage of the contracts, so waiting shouldn't be too long. The waiting window could be more small.
+Recovery can happen in the 3min window. File transfer is an crucial stage of the contracts, so waiting shouldn't be too long. The waiting window could be more small.
 
 ### Contract management
 
@@ -141,7 +141,11 @@ We decided that the nodes in the network would communicate directly with each ot
 
 ### Peer network
 
-After the hybrid model of the P2P network was up we decided to try to get rid of the tracker server completely, and to design a network consisting of only equal peers. After considering our options we created a ring shaped overlay network. In our system there is no need to find a certain key efficiently but we needed to create a network that would be reasonably easy to keep updated. It should also tolerate nodes leaving and joining abruptly. The ring overlay seemed to suit those purposes well. When writing the code for the node network, debugging the ring was time consuming and in the hindsight, the ring could have been planned better. The resulting code certainly has some room for improvement and maybe a few too many ifs and comparisons...
+After the hybrid model of the P2P network was up we decided to try to get rid of the tracker server completely, and to design a network consisting of only equal peers. After considering our options we created a ring shaped overlay network resembling the Chord system. In our system there is no need to find a certain key efficiently but we needed to create a network that would be reasonably easy to keep updated. It should also tolerate nodes leaving and joining abruptly. The ring overlay seemed to suit those purposes well.
+
+In this system, the location of backed up data (i.e. the backup node) is always known. The id is hashed from the host and the port of the node and will stay the same. If those values change, the node will not be identifiable anymore. Thus, this project would really not benefit from implementing the finger tables of the Chord system. The finger tables are used for finding data items in O(log n) time. The focus could be on finding nodes willing to create contracts. This could be done with having each node keep a list of other suitable nodes. For fault tolerance, each node should know a segment of the circle so that if one successor fails, it could contact the next. In our system, nodes keep lists of all other nodes.
+
+ When writing the code for the node network, debugging the ring was time consuming and in the hindsight, the ring could have been planned better. The resulting code certainly has some room for improvement and maybe a few too many ifs and comparisons...
 
 ### Backup process
 
@@ -192,6 +196,7 @@ Event and error logging is handled with *winston* package. The logs of an indivi
 - The tracker node could be added to the network either as a standalone node for bookkeeping and aiding in node discovery or as a "supernode" in the ring. The latter would mean implementing an HTTP component in the nodes as well.
 - In a real world solution, all nodes would probably communicate through the same port. That would simplify our code.
 - Updating the node lists may create too many messages in larger scale. Node lists could be optimized to only contain a certain number of nodes. In this project we could not test with large enough number of nodes to really benefit from that kind of optimization.
+- The nodes have no graceful means to leave the ring. A further improvement would be to add messaging protocol to notify of a node leaving the network. It would reduce the number of messages sent in the network, as the keep-alive pings could be sent less often.
 - Security ...
 
 ### Networking
