@@ -10,7 +10,7 @@ Our p2p network forms a structured overlay ring network. Joining nodes are place
 
 ## The design principles
 
-The goal of this project is to design a decentralized distributed P2P system that fulfills a certain goal. Also the resulting system should scale and and be reasonably fault tolerant. Fault tolerance is acheived by distributing multiple copies of a file to nodes in the network. Also nodes should be able to join and leave the network without warning. Since the files are backuped in n number of nodes, there is a known and accepted risk that all backup nodes might be unavailable at the same time. When at least one of the backup nodes re-joins the network, the file will be available again.
+The goal of this project is to design a decentralized distributed P2P system that fulfills a certain goal. Also the resulting system should scale and and be reasonably fault tolerant. Fault tolerance is acheived by distributing multiple copies of a file to nodes in the network. Also nodes should be able to join and leave the network without warning. Since the files are backuped in 1..n number of nodes, there is a known and accepted risk that all backup nodes might be unavailable at the same time. When at least one of the backup nodes re-joins the network, the file will be available again.
 
 ## Technologies
 
@@ -30,7 +30,7 @@ The nodes run as separate processes, which can exist or not in the same machine.
 
 ## Communication
 
-The messaging between the nodes (e.g. proposing a contract for nodes in the network, nodes joining the network) is conducted with UDP. The file transfer is done over TCP connection for reliability. Messages are passed clockwise in the ring when a new node joins. When the address of the receiving node is known (e.g. file's backup nodes), messages are sent directly between the two nodes. PING messages (for refreshing node state) are multicast to all nodes.
+The messaging between the nodes (e.g. proposing a contract for nodes in the network, nodes joining the network) is conducted with UDP. The file transfer is done over TCP connection for reliability. Messages are passed clockwise in the ring when a new node joins. When the address of the receiving node is known (e.g. file's backup nodes), messages are sent directly between the two nodes. PING messages (for refreshing node state) are multicast to all nodes. Nodes communicate directly via UDP on the backup process.
 
 ## Peer network architecture
 
@@ -80,25 +80,27 @@ Module: `node/modules/contract/contractNegotiator.ts`
 | CONTRACT_CREATE_ACK:contractId:contractNodeId:contractId | Message acknowledging to create a contract |
 | CONTRACT_PING:contractId:contractNodeId | Ping contract. | 
 
-Nodes that want to backup a file send `CONTRACT_CREATE` requests to it's peers in the network which also want to backup a file. The network (peer network or tracker) includes in the node updates a flag indicating if a node wants create backups or not. A node acknowledges a `CONTRACT_CREATE` request with a `CONTRACT_CREATE_ACK` request. After this both nodes start piging the contract. The contract is called at this stage a *contract candidate*.
+Nodes that want to backup a file send `CONTRACT_CREATE` requests to it's peers in the network which also want to backup a file. The network (peer network or tracker) includes in the node updates a flag indicating if a node wants create backups or not. A node acknowledges a `CONTRACT_CREATE` request with a `CONTRACT_CREATE_ACK` request. After this both nodes start piging the contract. The contract is called at this stage a *contract candidate*. If a contract candidate doesn't receive a ping for a certain time, the contract candidate will be disregarded.
 
-We use a competition strategy to cherry-pick contract candidates. Node's 
+Node's will not accept any more contract candidates if ther exists anough acknowledged contracts. However, if some node send's an `CONTRACT_CREATE_ACK` it will be accepted. So there can exist more contract candidates that are actually needed. We try to encrease the performance by accepting more candidates but use a competition strategy to cherry-pick the contracts.
+
+After a nodes has a contract candidate that has 3 or more pings. It will cherry-pick the contract candidates that have the most pings. If there is an equal amount of pings in a contract candidate, it will chose one of them.
 
 #### Failure and recovery
 
-Negotations are not recovered on failure because of the competition. If a node crashes and recovers, the negotiation will start from the beginning. The contract candidate will not reach enough pings and is rejected at the other end.
+Negotations are not recovered on failure because of the competition. It's very likely that the stopped contract candidates will loose the competition. If a node crashes and recovers, the negotiation will start from the beginning.
 
 ### Contract file transfer
 
 Modules: `node/modules/contract/contractFileSender.ts` and `node/services/tcpServer.ts`
 
-Nodes listen to a TCP which is one number lower than the UDP port. We took this approach as a convenience (see improvements section TODO!).
+Nodes listen to a TCP which is one number lower than the UDP port. We took this approach as a convenience to save development time.
 
 Node's will periotically attempt to send the file for the contract. If the file is not sent successfully in about 3mins, the contract will be deleted. In practice this means that the node should negitiate a contract again.
 
 #### Failure and recovery
 
-Recovery can happen in the 3min window. File transfer is an crusial stage of the contracts, so waiting shouldn't be too long. The waiting window could be more small.
+Recovery can happen in the 3min window. File transfer is an crusial stage of the contracts, so waiting shouldn't be too long. The waiting window could be even smaller.
 
 ### Contract management
 
@@ -110,6 +112,8 @@ Module: `node/contractManager.ts`
 
 Manages the existing contracts. Sends ping every 10 seconds. Checks that a contract is kept alive by checking that all contracts receive a ping. If a contract doesn't receive ping in 1min it will time out. The contract is kept in the recovery mode for the same time as the contract has been alive. The other participant could have maybe crashed. This is the time window to recover the file. 
 
+Currently the contract will be kept in the recovery mode for the same duration as the contract has been alive. This should be maybe max 1 day.
+
 ### Contract proofs
 
 Modules: `node/modules/contract/contractProof.ts`
@@ -118,13 +122,13 @@ Modules: `node/modules/contract/contractProof.ts`
 | --- | --- |
 | CONTRACT_PROOF:contractId:middlePointForSha1 | Asking for a contract. Should get acknowledgement of 2 sha1 in relation to middle point |
 
-Contract proofs are used to create trust to the contract. The nodes enforce the contract by askin proofs.
+Contract proofs are used to create trust to the contract. The nodes enforce the contract by asking proofs.
 
-Proofs contain a number to the middle point of the file. The middle point is created randomly. The nodes answer with 2 sha1 hashes from the beginning to the middle point and from the middle point to the end of the file. This coveres the whole file on each proof. Also, this mechanism should be solid and no node should be able to cheat the system. It's more efficient to store the file than to do any cheating mechanisms.
+Proofs contain a number to the middle point of the file. The middle point is created randomly. The nodes answer with 2 sha1 hashes from the beginning to the middle point and from the middle point to the end of the file. This coveres the whole file on each proof. Also, this mechanism should be solid and no node should be able to cheat it. It's more efficient to store the file than to do any cheating mechanisms.
 
 #### Failure and recovery
 
-A node will ask the same proof for 3mins. If a node recoveres in time and can answer the proof, the contract will stay. If the proof fails, the node can not be trusted and the contract will be deleted.
+A node will ask the same proof for 3mins. If a node recoveres in time and can answer the proof, the contract will stay. If the proof fails, the node can not be trusted and the contract will be deleted. Proofs are only asked from contracts that respond to a ping. The contract manager handles the recovery and setting contracts to recovery mode.
 
 ### File recovery
 
@@ -147,19 +151,23 @@ After the hybrid model of the P2P network was up we decided to try to get rid of
 
 **Consensus**
 
-Creating the contracts is not straight forward. For this reason "racing" strategy is used to create the contracts. The amount of pings that are received for the contract, creates a consensus that the contract should be maintained.
+Creating the contracts is not straight forward. For this reason competition strategy is used to create the contracts. The amount of pings that are received for the contract, creates a consensus that the contract should be maintained.
 
 **Trust**
 
-Trust cannot be guaranteed "as is". There needs to exist some kind of mechanism to create trust among nodes. We use the contract proof mechanism to enforce the contracts, which creates trust among the nodes. It's important to note that nothing encorces the nodes to deliver the backuped files on failure. However, it's a mutual interest to keep the contract in tact. This proof mechanism could be extended by asking the file back from time to time.
+Trust cannot be guaranteed "as is". There needs to exist some kind of mechanism to create trust among nodes. We use the contract proof mechanism to enforce the contracts, which creates trust among the nodes. It's important to note that nothing enforces the nodes to deliver the backuped files on failure. However, it's a mutual interest to keep the contract in tact. A long contract is a show of trust that the both nodes want to keep. Also this proof mechanism could be extended by asking the file back from time to time.
 
 **Free riding**
 
-Free riding in p2p is an important topic in p2p neworks. There need's to be come kind of mutual exchanges happening to implement anti free riding mechanisms. For this reason, we use the "tit for tat" strategy for contracts. Both of the nodes have a mutual intrest to keep the contract in place.
+Free riding in p2p is an important topic in p2p neworks. There need's to be come kind of mutual exchanges happening to implement free riding prevention mechanisms. For this reason, we use the "tit for tat" strategy for contracts. Both of the nodes have a mutual intrest to keep the contract in place and free riding should be impossible.
 
 ## Scaling and performance
 
-The network is very scalable and our hashing and naming protocol will in theory enable 2<sup>32</sup> nodes to join the network. In practice, hash collisions would probably happen (this has not been solved in the project). Joining the network will happen in O(n) time, as the NEW_NODE message will go around the whole circle to notify other nodes. The PING messages to keep the nodes timestamp fresh will currently be sent to all nodes in the network. This will result in n<sup>2</sup> messages in the network sent every ten seconds. This will not be a problem in the smaller networks tested for this project but for networks with perhaps thousands of nodes, a more efficient way of messaging should be implemented. For instance, a node list could be restricted to only hold 10 nearest successors and the nodes with backup files.
+The network is very scalable and our hashing and naming protocol will in theory enable 2<sup>32</sup> nodes to join the network. In practice, hash collisions would probably happen (see suggested solution in "Naming and node id" improvements section). Joining the network will happen in O(n) time, as the NEW_NODE message will go around the whole circle to notify other nodes. The PING messages to keep the nodes timestamp fresh will currently be sent to all nodes in the network. This will result in n<sup>2</sup> messages in the network sent every ten seconds. This will not be a problem in the smaller networks tested for this project but for networks with perhaps thousands of nodes, a more efficient way of messaging should be implemented. For instance, a node list could be restricted to only hold 10 nearest successors and the nodes with backup files.
+
+The backup process uses UDP packets for end to end communication. It can scale among the peer network. On very large networks, some limitation should be in place: the node shouldn't try to negotiate with all the nodes.
+
+Nodes are selected by random to create contracts among others. There could be in place a mechanism to select optimal nodes for contracts. Nodes would like to select best and closest nost for fast file transfers and sychronization.
 
 ## Functionalities 
 
@@ -173,15 +181,19 @@ When a node has joined the network [(see: Joining the network)](#Joining-the-net
 
 ### Consistency and synchronization
 
-To ensure the consistency of the overlay network, the nodelists are updated frequently. 
+To ensure the consistency of the overlay network, the nodelists are updated frequently. Contracts are ping'ed and enforced from time to time.
 
 ### Fault tolerance and recovery
+
+### Peer network
 
 In the peer network, when a node leaves suddenly, the other nodes stop receiving its PINGs. After a node's timestamp has expired, that node will be removed from the nodelists. Checking of the timestamps and updating the lists occurs with twenty second intervals. The update function alse checks if the predecessor or successor needs to be updated due to the expired node. The nodes will PING more frequently than the update function is run, so a couple of lost PING messages will be tolerated. When a node re-joins the network, it will receive the same id and join with the usual protocol [(see: Joining the network)](#Joining-the-network).
 
 All nodes in the network will send PING messages periodically to let other nodes know that they are still alive. All nodes will update their node lists with the time of the last PING. If a node has not PINGed in a while it will be removed from the nodelists and the predecessor and successor of affected nodes will be updated.
 
+#### Backup process
 
+Explained in architecture section for separate functions.
 
 ### Logging
 
@@ -192,7 +204,12 @@ Event and error logging is handled with *winston* package. The logs of an indivi
 - The tracker node could be added to the network either as a standalone node for bookkeeping and aiding in node discovery or as a "supernode" in the ring. The latter would mean implementing an HTTP component in the nodes as well.
 - In a real world solution, all nodes would probably communicate through the same port. That would simplify our code.
 - Updating the node lists may create too many messages in larger scale. Node lists could be optimized to only contain a certain number of nodes. In this project we could not test with large enough number of nodes to really benefit from that kind of optimization.
-- Security ...
+
+### Naming and node id
+
+Our system doesn't provide any security for node ids. Node ids can be hijacked. We thought about this topic and suggest to implement the node ids using a public key. For example Ed25519 public-key signature system's public keys can be used as the node id. Ed25519 public keys consume only 32 bytes, which is an acceptable length for the keys and it's advantage.
+
+Node's should be verified by it's signatures. This would add security to the system. A small amount of overhead is added by signing and verifying messages but we feel it's a must have feature.
 
 ### Networking
 
@@ -208,11 +225,15 @@ Currently a node can have 1..n contracts for a file. With the current logic, the
 
 Currently the nodes can send any lengths of files. The backups work with the "tit for tat" stategy. We would like to have the contracts equal to the same amount of bytes. This could be achieved by splitting the file for example to 10M chunks.
 
-Encrpytion should be used. This can be handled in the node client.
+Encrpytion should be used. This can be handled in the node client and adds security.
 
-## Negotiation
+#### Negotiation
 
+The negotation stage could be improved
 
+#### Selecting optimal nodes
+
+To encrease performance, the nodes should select the most optimal nodes to do sychronization and file transfers. In practice, the closes physical nodes should be accepted.
 
 ## Code repository
 
