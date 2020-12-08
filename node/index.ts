@@ -3,6 +3,7 @@ import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import { getRequiredEnvVar, getOptionalEnvVar } from "./util/env";
 import { getLocalNodeConfig, getGeneralConfig, getLocalId } from "./config";
+import logger from "./util/logger";
 
 import { NodesHandler } from "./types";
 
@@ -51,7 +52,7 @@ const getPeerNodeHandler = () => {
   const createFirstPeerNode = (port: number) => {
     const peer = new Peer(nodeId, "localhost", port, udpClient);
     const name = peer.getId();
-    console.log("First node:", name);
+    logger.info("Created the first node")
     return peer;
   };
 
@@ -60,6 +61,7 @@ const getPeerNodeHandler = () => {
     const name = peer.getId();
     const joinMessage = `JOIN:${name}:${host}:${localClientConfig.port}`;
     peer.udpClient.sendUdpMessage(joinMessage, connectToPort, connectToHost);
+    logger.info(`NETWORK - Sent JOIN to ${connectToHost}:${connectToPort}`);
     return peer;
   };
 

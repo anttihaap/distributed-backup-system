@@ -30,7 +30,8 @@ export const fileSize = (fileName: string): number => {
 };
 
 export const getFileNames = async () => {
-  return await readFileNames();
+  const fileNames = await readFileNames()
+  return fileNames.filter(item => !(/(^|\/)\.[^\/\.]/g).test(item));
 };
 
 export const removeContractFromFile = async (contractId: string, fileName: string) => {
