@@ -4,8 +4,8 @@ This is a project work for the *Distributed Systems* course (University of Helsi
 
 ## Running the network
 
-Six example nodes numbered from 1 to 5 and 9 are configured in the *config.json* file. A single node can be started with command 
-`LOCAL_NODE_ID=<nodeId> npm start` in the *node/* folder. Start each node in its own terminal, beginning with node number 9 since it has no other node to connect to.
+To simplyfy testing, six example nodes numbered from 1 to 5 and 9 are configured in the *config.json* file. A single node can be started with command 
+`LOCAL_NODE_ID=<nodeId> npm start` in the *node/* folder. Generated nodeid's will be generated on first run and reused in the future. Start each node in its own terminal, beginning with node number 9 since it has no other node to connect to.
 
 For example
 
