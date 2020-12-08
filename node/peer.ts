@@ -1,14 +1,14 @@
-import cron from 'node-cron';
-import udp from './services/udp';
-import { NodesHandler, Node } from './types';
-import logger from './util/logger';
+import cron from "node-cron";
+import udp from "./services/udp";
+import { NodesHandler, Node } from "./types";
+import logger from "./util/logger";
 
 class Peer implements NodesHandler {
   id: string;
   ip: string;
   port: number;
-  predecessor: string = '';   // ID:HOST:PORT
-  successor: string = '';     // ID:HOST:PORT
+  predecessor: string = "";   // ID:HOST:PORT
+  successor: string = "";     // ID:HOST:PORT
   udpClient: any;
 
   nodes: Node[];
@@ -25,19 +25,19 @@ class Peer implements NodesHandler {
     this.udpClient = udpClient;
 
     // ping the whole nodeList with 10 sec intervals to keep node alive
-    cron.schedule('*/5 * * * * *', () => {
+    cron.schedule("*/10 * * * * *", () => {
       this.sendPing()
     })
 
     // Update nodeList every 20 seconds
-    cron.schedule('*/20 * * * * *', () => {
+    cron.schedule("*/20 * * * * *", () => {
 
       // remove expired nodes, TTL = 30 sec
       const filteredNodes = this.nodes.filter(node => node.lastUpdate! + (10 * 1000) >= new Date().getTime())
       this.nodes = filteredNodes
 
       // Update successor node, if needed:
-      let successorIdValue = parseInt(this.successor.split(':')[0], 16)
+      let successorIdValue = parseInt(this.successor.split(":")[0], 16)
       const nodeIds = filteredNodes.map(n => parseInt(n.nodeId, 16))
 
       if (!nodeIds.includes(successorIdValue)) {
@@ -56,7 +56,7 @@ class Peer implements NodesHandler {
         }
       }
       // Update predecessor, if needed
-      let predecessorIdValue = parseInt(this.predecessor.split(':')[0], 16)
+      let predecessorIdValue = parseInt(this.predecessor.split(":")[0], 16)
 
       if (!nodeIds.includes(predecessorIdValue)) {
         const smallerThanThisList = nodeIds.filter(n => n < parseInt(this.id, 16))
@@ -86,39 +86,39 @@ class Peer implements NodesHandler {
 
     // listen to and react to emitted messages (from udpClient)
 
-    this.udpClient.on('join', (data: any) => {
+    this.udpClient.on("join", (data: any) => {
       this.handleJoin(data.message)
     })
 
-    this.udpClient.on('first_ack', (data: any) => {
+    this.udpClient.on("first_ack", (data: any) => {
       this.handleFirstAck(data.message)
     })
 
-    this.udpClient.on('ack_join', (data:any) => {
+    this.udpClient.on("ack_join", (data:any) => {
       this.handleAck(data.message)
     })
 
-    this.udpClient.on('notify', (data:any) => {
+    this.udpClient.on("notify", (data:any) => {
       this.handleNotify(data.message)
     })
 
-    this.udpClient.on('ping', (data: any) => {
+    this.udpClient.on("ping", (data: any) => {
       this.handlePing(data.message)
     })
 
-    this.udpClient.on('new_node', (data: any) => {
+    this.udpClient.on("new_node", (data: any) => {
       this.handleNotifyNext(data.message)
     })
   }
 
   handleJoin(message: string) {
-    const messageData = message.split(':').slice(1,4)
+    const messageData = message.split(":").slice(1,4)
     const [ peerId, peerHost, peerPort ] = messageData
 
-    const predecessorData = this.predecessor.split(':')
+    const predecessorData = this.predecessor.split(":")
     const [ predecessorId, predecessorIp, predecessorPort] = predecessorData
 
-    const successorData = this.successor.split(':')
+    const successorData = this.successor.split(":")
     const [ successorId, successorIp, successorPort ] = successorData
 
     // Will be updated after PINGs
@@ -174,7 +174,7 @@ class Peer implements NodesHandler {
   }
 
   handleFirstAck(message: string) {
-    const messageData = message.split(':').slice(1,4)
+    const messageData = message.split(":").slice(1,4)
     const [ peerId, peerHost, peerPort ] = messageData
 
     const contractReq = false
@@ -189,7 +189,7 @@ class Peer implements NodesHandler {
   }
 
   handleAck(message: string) {
-    const messageData = message.split(':').slice(1, 7)
+    const messageData = message.split(":").slice(1, 7)
     const [ peerId, peerHost, peerPort, predecessorId, predecessorHost, predecessorPort ] = messageData
 
     const contractReq = false
@@ -212,7 +212,7 @@ class Peer implements NodesHandler {
   }
 
   handleNotify(message:string) {
-    const messageData = message.split(':').slice(1, 4)
+    const messageData = message.split(":").slice(1, 4)
     const [ peerId, peerHost, peerPort ] = messageData
 
     const contractReq = false
@@ -235,12 +235,12 @@ class Peer implements NodesHandler {
   handlePing(message: any) {
     // Update nodeList last pinged times
     const nodeIds = this.nodes.map(n => n.nodeId)
-    const messageData = message.split(':')
+    const messageData = message.split(":")
     const nodeId = messageData[1]
     const contractReqString = messageData[4]
 
     const bool = (str: string) => {
-      return str === 'true'
+      return str === "true"
     }
 
     if (nodeIds.includes(nodeId)) {
@@ -249,23 +249,23 @@ class Peer implements NodesHandler {
     this.nodes = updatedList
 
     } else {
-      const messageData = message.split(':')
+      const messageData = message.split(":")
       this.addNodeToNodeList(messageData[1], messageData[2], messageData[3], bool(contractReqString))
     }
   }
 
   notifyNext(message: any) {
-    const succHost = this.successor.split(':')[1]
-    const succPort = this.successor.split(':')[2]
+    const succHost = this.successor.split(":")[1]
+    const succPort = this.successor.split(":")[2]
     this.udpClient.sendUdpMessage(message, succPort, succHost)
   }
 
   handleNotifyNext(message: any) {
-    const messageData = message.split(':').slice(1, 5)
+    const messageData = message.split(":").slice(1, 5)
     const [ id, host, port, contractReq ] = messageData
 
     if (id === this.id) {
-      logger.info('NETWORK - Notified all other nodes.')
+      logger.info("NETWORK - Notified all other nodes.")
     } else {
       logger.info(`NETWORK - Received NEW_NODE. Added ${id} to the node list`)
       this.addNodeToNodeList(id, host, port, contractReq)
