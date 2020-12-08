@@ -12,7 +12,7 @@
       "id": 2,
       "port": 2222,
       "connectionPeerHost": "localhost",
-      "connectionPeerPort": "9999"
+      "connectionPeerPort": "1111"
     },
     {
       "id": 3,
